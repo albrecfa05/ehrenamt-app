@@ -1,0 +1,9 @@
+# Laufzeitdaten: Datenbank, hochgeladene Dateien, Sicherungen
+data/
+data-*/
+backups/
+node_modules/
+*.log
+
+# Zugangsdaten
+.env
