@@ -30,6 +30,7 @@ server/
   seed.js           Grunddaten beim ersten Start; seedUpgrades() ergänzt neue Vorlagen in bestehenden Installationen
   connectors/
     m365.js         Microsoft Graph: Mails lesen, Entwürfe/Termine/Dateien anlegen – keine Sendefunktion
+    claude.js       Claude (Anthropic SDK): strukturierte Vorschläge, keine Werkzeuge
     ics.js          Kalender-Abos (Spielpläne) lesen, Heimspiele erkennen
   services/
     tasks.js        Fachlogik der Aufgaben: Anlegen aus Vorlagen, Statuswechsel, Liegezeit, Erfahrungswerte
@@ -37,7 +38,9 @@ server/
     catalog.js      Automatisierungskatalog: was die App kann, an/aus, Parameter, Voraussetzungen
     inbox.js        Eingang: Vorschläge, Antwortzuordnung, Übernahme mit Anhängen, Postfach-Abruf
     jobs.js         Spielpläne, Sponsoren, Eskalation, Monatsbericht, meinVerein-Prüfung, Auto-Abschluss
-    files.js        Ablage speichern (Upload, Mailanhänge), Zwischenablage für Eingangsanhänge
+    files.js        Ablage speichern (Upload, Mailanhänge), Themen-Ordner, SharePoint-Kopie vorschlagen
+    filing.js       Eingangs- und Ablageregeln: Abgleich, Vorschau, Ablegen, Anwenden auf neue Eingänge
+    ki.js           KI-Assistent: Kontext (nur grüne Daten), Antwortformat, Prüfung, Übernahme
     scheduler.js    Minütlicher Takt: ruft alle Abläufe auf, jeder prüft selbst, ob er eingeschaltet ist
   api/              Schnittstellen je Fachgebiet (registrieren sich beim Import selbst)
 public/

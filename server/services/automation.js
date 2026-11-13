@@ -341,29 +341,63 @@ export function buildOverview(areaIds = null, title = 'Wöchentliche Übersicht'
 // ---------- Auslöser ----------
 
 /** Zeitplan-Regeln: prüft minütlich, ob eine Regel jetzt fällig ist. */
-export function runScheduledRules(now = new Date()) {
+const berlinStamp = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' });
+/** Zeitpunkt als „JJJJ-MM-TT HH“ in Berliner Zeit – vergleichbar als Text. */
+const stamp = (d) => berlinStamp.format(d);
+
+/**
+ * Letzter planmäßiger Zeitpunkt einer Zeitplan-Regel vor oder gleich „now“, als „JJJJ-MM-TT HH“.
+ * Täglich: heute bzw. gestern zur Stunde; wöchentlich: letzter passender Wochentag; monatlich: letzter passender Tag.
+ */
+export function lastDueSlot(c, now = new Date()) {
   const { hour, weekday } = berlinClock(now);
   const day = today(now);
+  const h = Math.min(23, Math.max(0, Number(c.stunde ?? 7)));
+  const hh = String(h).padStart(2, '0');
+  if (c.rhythmus === 'woechentlich') {
+    const wd = Number(c.wochentag || 1);
+    let back = (weekday - wd + 7) % 7;
+    if (back === 0 && hour < h) back = 7;
+    return `${addDays(day, -back)} ${hh}`;
+  }
+  if (c.rhythmus === 'monatlich') {
+    const tag = Math.min(28, Math.max(1, Number(c.tag || 1)));
+    let [y, m] = day.split('-').map(Number);
+    let cand = `${y}-${String(m).padStart(2, '0')}-${String(tag).padStart(2, '0')}`;
+    if (cand > day || (cand === day && hour < h)) { m -= 1; if (m === 0) { m = 12; y -= 1; } cand = `${y}-${String(m).padStart(2, '0')}-${String(tag).padStart(2, '0')}`; }
+    return `${cand} ${hh}`;
+  }
+  return `${hour < h ? addDays(day, -1) : day} ${hh}`;
+}
+
+/**
+ * Zeitplan-Regeln: laufen zum planmäßigen Zeitpunkt – oder beim nächsten Takt, wenn der Server zu dieser
+ * Zeit aus war (höchstens 3 Tage rückwirkend, nie für Zeitpunkte vor der Freigabe).
+ */
+export function runScheduledRules(now = new Date()) {
   const rules = q.all(`SELECT * FROM rules WHERE active = 1 AND approved = 1 AND trigger_type = 'zeitplan'`);
+  const limit = stamp(new Date(now.getTime() - 3 * 86_400_000));
   for (const r of rules) {
     const c = parseJson(r.trigger_config, {});
-    if (Number(c.stunde) !== hour) continue;
-    if (r.last_run_at && today(new Date(r.last_run_at)) === day) continue; // höchstens einmal am Tag
-    if (c.rhythmus === 'woechentlich' && Number(c.wochentag || 1) !== weekday) continue;
-    if (c.rhythmus === 'monatlich' && Number(c.tag || 1) !== Number(day.slice(8, 10))) continue;
-    runRule(r, { trigger: `Zeitplan (${c.rhythmus})` });
+    const due = lastDueSlot(c, now);
+    if (due < limit) continue;                                              // zu lange her – auf den nächsten Termin warten
+    if (r.approved_at && stamp(new Date(r.approved_at)) > due) continue;   // Termin lag vor der Freigabe
+    if (r.last_run_at && stamp(new Date(r.last_run_at)) >= due) continue;   // für diesen Termin schon gelaufen
+    const late = stamp(now) > due;
+    runRule(r, { trigger: `Zeitplan (${c.rhythmus})${late ? ` – nachgeholt für ${due.slice(8, 10)}.${due.slice(5, 7)}. ${due.slice(11)} Uhr` : ''}` });
   }
 }
 
-/** Frist-Regeln: X Tage vor Fälligkeit passender Aufgaben. */
+/** Frist-Regeln: X Tage vor Fälligkeit passender Aufgaben (je Aufgabe und Frist genau einmal). */
 export function runDeadlineRules(now = new Date()) {
   const day = today(now);
   const rules = q.all(`SELECT * FROM rules WHERE active = 1 AND approved = 1 AND trigger_type = 'frist'`);
   for (const r of rules) {
     const c = parseJson(r.trigger_config, {});
     const target = addDays(day, Number(c.tage_vorher || 0));
-    const params = [target];
-    let sql = `SELECT * FROM tasks WHERE kind = 'aufgabe' AND status IN ('offen','in_arbeit','wartet') AND due_date = ?`;
+    const params = [day, target];
+    // Alles, was bis zu X Tage vor der Frist liegt – so werden auch Tage nachgeholt, an denen der Server aus war
+    let sql = `SELECT * FROM tasks WHERE kind = 'aufgabe' AND status IN ('offen','in_arbeit','wartet') AND due_date >= ? AND due_date <= ?`;
     if (r.area_id) { sql += ' AND area_id = ?'; params.push(r.area_id); }
     if (r.template_id) { sql += ' AND template_id = ?'; params.push(r.template_id); }
     for (const t of q.all(sql, ...params)) {

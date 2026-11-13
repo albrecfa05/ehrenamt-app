@@ -559,6 +559,43 @@ const MIGRATIONS = [
     created_at    TEXT NOT NULL
   );
   `,
+
+  // 4: Themen-Ordner in der Ablage, Eingangs- und Ablageregeln
+  `
+  ALTER TABLE files ADD COLUMN folder TEXT NOT NULL DEFAULT '';        -- z. B. "Rechnungen" oder "Sponsoring/Verträge"
+  CREATE INDEX idx_files_folder ON files(area_id, folder);
+  ALTER TABLE inbox ADD COLUMN sender_domain TEXT NOT NULL DEFAULT '';  -- nur die Domain (z. B. gemeinde.de), für Regeln
+
+  CREATE TABLE filing_rules (
+    id                INTEGER PRIMARY KEY,
+    name              TEXT NOT NULL,
+    pos               INTEGER NOT NULL DEFAULT 100,   -- Reihenfolge: die erste passende Regel gewinnt
+    active            INTEGER NOT NULL DEFAULT 1,
+    -- Bedingungen (leer = egal; mehrere Begriffe mit Komma = einer davon genügt)
+    area_id           INTEGER REFERENCES areas(id),   -- nur Eingänge dieses Bereichs
+    sender_contains   TEXT NOT NULL DEFAULT '',
+    subject_contains  TEXT NOT NULL DEFAULT '',
+    filename_contains TEXT NOT NULL DEFAULT '',
+    file_types        TEXT NOT NULL DEFAULT '',       -- z. B. "pdf, docx"
+    -- Ergebnis
+    target_area_id    INTEGER REFERENCES areas(id),   -- leer = Bereich des Eingangs
+    folder            TEXT NOT NULL DEFAULT '',
+    data_class        TEXT NOT NULL DEFAULT 'gelb' CHECK (data_class IN ('gruen','gelb')),
+    occasion          TEXT NOT NULL DEFAULT '',       -- Anlass im Dateinamen; {{betreff}} {{datei}} {{absender}} erlaubt
+    tags              TEXT NOT NULL DEFAULT '',
+    mode              TEXT NOT NULL DEFAULT 'vormerken' CHECK (mode IN ('ablegen','aufgabe','vormerken')),
+    template_id       INTEGER REFERENCES process_templates(id),
+    office_id         INTEGER REFERENCES offices(id),
+    mirror            INTEGER NOT NULL DEFAULT 0,     -- Kopie nach SharePoint vorschlagen (Freigabe nötig)
+    dismiss_mail      INTEGER NOT NULL DEFAULT 0,     -- bei „ablegen“: Mail danach aus dem Eingang nehmen
+    hits              INTEGER NOT NULL DEFAULT 0,
+    last_hit_at       TEXT,
+    origin            TEXT NOT NULL DEFAULT '',       -- z. B. "KI-Vorschlag #3"
+    created_by        INTEGER REFERENCES users(id),
+    created_at        TEXT NOT NULL,
+    updated_at        TEXT NOT NULL
+  );
+  `,
 ];
 
 let db;

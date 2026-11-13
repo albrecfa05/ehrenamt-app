@@ -692,6 +692,7 @@ const UPGRADE_FAQ = [
   ['Verbindungen', 'Wie kommen die Spielpläne in den Kalender?', 'In click-TT/nuLiga gibt es je Mannschaft einen Kalender-Export (iCal). Die Adresse im Adminpanel unter „Verbindungen → Spielpläne“ eintragen. Mit dem Vereinsnamen als „Heimspiel-Erkennung“ legt die App für Heimspiele automatisch eine Aufgabe an.'],
   ['Automatisierung', 'Wo schalte ich Automatisierungen ein oder aus?', 'Adminpanel → Automatisierungen. Dort steht jede Automatik mit Stufe, Beschreibung und Parametern. Was eine Voraussetzung braucht (z. B. Microsoft 365 oder die geklärte Datenschutzfrage), ist markiert.'],
   ['Automatisierung', 'Wie ordnet die App Antworten zu?', 'Entwürfe, die über das Postfach gehen, tragen die Vorgangsnummer im Betreff, z. B. [#42]. Kommt eine Antwort, hängt die App sie als Kommentar an die Aufgabe, legt Anhänge ab und beendet „Wartet auf Zulieferung“.'],
+  ['Verbindungen', 'Wie kommen Mailanhänge automatisch in den richtigen Ordner?', 'Unter Eingang → Regeln eine Ablageregel anlegen: Wenn Absender (Name oder Domain), Betreff, Dateiname oder Dateityp passen, landet der Anhang in Bereich und Ordner – wahlweise ohne Aufgabe, als Aufgabe oder erst beim Übernehmen. Der Probelauf zeigt vorher, was passieren würde. Auffällige Mails werden nie automatisch einsortiert.'],
   ['Daten', 'Jemand fragt, welche Daten wir über ihn haben. Was tun?', 'Adminpanel → Datenschutz: Namen eingeben. Die App listet alle Fundstellen (Aufgaben, Kommentare, Eingang, Dateien, Sponsoren, Protokoll) und exportiert sie als CSV.'],
 ];
 

@@ -3,6 +3,7 @@
 import { api } from '../api.js';
 import { h, modal, field, input, textarea, select, toast, errorToast, button, copyText, fmtDateTime, formValues, fmtBytes, icon, today } from '../ui.js';
 import { state, areaOptions, autoOn, refreshMe } from '../state.js';
+import { folderInput } from './folders.js';
 
 // ---------- Entwurf aus Textvorlage (AUT-5) ----------
 
@@ -150,13 +151,14 @@ export async function calcDialog(task, preselect) {
 
 // ---------- Datei hochladen (ABL-1, ABL-2, DAT-1) ----------
 
-export async function uploadDialog({ areaId, taskId } = {}) {
+export async function uploadDialog({ areaId, taskId, folder = '' } = {}) {
   const fileInput = h('input', { type: 'file', multiple: true, required: true });
   const area = select(areaOptions(null), areaId || state.me.areas[0]?.id, { name: 'area_id', disabled: !!taskId });
   const dataClass = select([['gruen', 'Grün: unkritisch, darf dauerhaft liegen'], ['gelb', 'Gelb: personenbezogen (Stammdaten, Bankdaten, Minderjährige)'], ['rot', 'Rot: Gesundheit, Zugangsdaten']], 'gruen');
   const docDate = input({ type: 'date', value: today() });
   const issuer = input({ placeholder: 'z. B. Sporthaus Müller, Bezirk, Gemeinde' });
   const occasion = input({ placeholder: 'z. B. Rechnung Bälle, Aufnahmeantrag' });
+  const fo = await folderInput(folder);
   const nameOut = h('code', { class: 'filename' }, '');
   const redWarn = h('div', { class: 'form-error', hidden: true }, 'Rote Daten nimmt die App nicht an (DAT-1). Bitte nicht hochladen.');
   const upd = async () => {
@@ -174,7 +176,7 @@ export async function uploadDialog({ areaId, taskId } = {}) {
       h('div', { class: 'span-2' }, field('Datei(en)', fileInput, 'Erlaubt: PDF, Bilder, Office, Text, Mail (.eml). Höchstens 25 MB.')),
       field('Bereich', area), field('Datenklasse (Ampel)', dataClass),
       field('Datum des Dokuments', docDate), field('Aussteller', issuer),
-      h('div', { class: 'span-2' }, field('Anlass', occasion)),
+      field('Anlass', occasion), field('Ordner', fo.el, 'optional, Unterordner mit „/“'),
       h('div', { class: 'span-2' }, h('div', { class: 'hint' }, 'Einheitlicher Name: ', nameOut)), h('div', { class: 'span-2' }, redWarn)),
     actions: [{ label: 'Abbrechen', kind: 'ghost' }, { label: 'Hochladen', kind: 'primary', onClick: async () => {
       if (!fileInput.files.length) throw new Error('Bitte eine Datei wählen.');
@@ -182,7 +184,7 @@ export async function uploadDialog({ areaId, taskId } = {}) {
       let n = 0;
       for (const f of fileInput.files) {
         const r = await api.upload('/api/files', f, {
-          area_id: Number(area.value), task_id: taskId || null, data_class: dataClass.value, original_name: f.name, mime: f.type,
+          area_id: Number(area.value), task_id: taskId || null, data_class: dataClass.value, original_name: f.name, mime: f.type, folder: fo.input.value,
           doc_date: docDate.value, issuer: issuer.value, occasion: fileInput.files.length > 1 ? (occasion.value ? `${occasion.value} ${n + 1}` : '') : occasion.value,
         });
         if (r.duplicateOf) toast(`Hinweis: identische Datei liegt schon als „${r.duplicateOf.filename}“ in der Ablage.`, 'warn', 6000);

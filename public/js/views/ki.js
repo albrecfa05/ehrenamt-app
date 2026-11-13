@@ -8,6 +8,7 @@ const TRIGGER = { zeitplan: 'Zeitplan', frist: 'Frist', eingang: 'Eingang', stat
 const ACTION = { aufgabe_anlegen: 'Aufgabe anlegen', entwurf_erzeugen: 'Entwurf erzeugen', erinnern: 'Erinnern', uebersicht: 'Übersicht erstellen', kalendereintrag: 'Kalendereintrag (mit Freigabe)' };
 const WD = ['', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 const EXAMPLES = [
+  'Rechnungen von Sponsoren sollen automatisch im Ordner Sponsoring/Rechnungen landen.',
   'Erinnere die Vertretung, wenn ein Schiedsrichter-Ersatz zwei Tage vor dem Spiel noch offen ist.',
   'Wenn ein Spielbericht erledigt ist, soll automatisch eine Aufgabe für den Instagram-Beitrag entstehen.',
   'Jeden Freitag um 16 Uhr möchte ich eine Übersicht aller wartenden Aufgaben.',
@@ -77,7 +78,7 @@ export default async function kiTab(el) {
   function proposal(r, v, i) {
     const check = r.checks[i] || {};
     const applied = r.applied[i];
-    const kind = { regel: ['Neue Regel', 'badge-level'], katalog: ['Katalog einschalten', 'badge-gruen'], nicht_moeglich: ['Nicht möglich', 'badge-red'] }[v.art];
+    const kind = { regel: ['Neue Regel', 'badge-level'], katalog: ['Katalog einschalten', 'badge-gruen'], ablageregel: ['Ablageregel', 'badge-idea'], nicht_moeglich: ['Nicht möglich', 'badge-red'] }[v.art];
     let detail = null;
     if (v.art === 'regel') {
       const g = v.regel;
@@ -90,16 +91,26 @@ export default async function kiTab(el) {
       detail = h('div', { class: 'rule-flow' }, h('span', { class: 'rf-when' }, icon('clock', 14), when), icon('chevronRight', 14),
         h('span', { class: 'rf-do' }, icon('zap', 14), ACTION[g.aktion], what ? ': ' + what : ''), levelBadge(g.stufe),
         h('span', { class: 'small muted' }, [g.bereich || 'alle Bereiche', g.vorgang ? `nur ${g.vorgang}` : null].filter(Boolean).join(' · ')));
+    } else if (v.art === 'ablageregel') {
+      const a = v.ablageregel;
+      const when = [a.absender_enthaelt && `Absender „${a.absender_enthaelt}“`, a.betreff_enthaelt && `Betreff „${a.betreff_enthaelt}“`, a.dateiname_enthaelt && `Datei „${a.dateiname_enthaelt}“`,
+        a.dateitypen && `Typ ${a.dateitypen}`, a.bedingung_bereich && `Bereich ${a.bedingung_bereich}`].filter(Boolean).join(' und ') || '—';
+      const mode = { ablegen: 'nur ablegen', aufgabe: `Aufgabe${a.vorgang ? ' (' + a.vorgang + ')' : ''}`, vormerken: 'vormerken' }[a.modus];
+      detail = h('div', { class: 'rule-flow' }, h('span', { class: 'rf-when' }, icon('inbox', 14), 'Wenn ', when), icon('chevronRight', 14),
+        h('span', { class: 'rf-do' }, icon('folder', 14), `${a.zielbereich || 'Bereich des Eingangs'}${a.ordner ? ' / ' + a.ordner : ''}`),
+        h('span', { class: `badge ${a.datenklasse === 'gruen' ? 'badge-gruen' : 'badge-gelb'}` }, a.datenklasse === 'gruen' ? 'grün' : 'gelb'),
+        h('span', { class: 'small muted' }, mode + (a.sharepoint ? ' · SharePoint-Kopie (mit Freigabe)' : '') + (a.mail_entfernen ? ' · Mail danach erledigt' : '')));
     } else if (v.art === 'katalog') {
       detail = h('div', { class: 'small' }, 'Katalog: ', h('strong', {}, check.label || v.katalog.schluessel),
         v.katalog.parameter.length ? ` · ${v.katalog.parameter.map(p => `${p.name} = ${p.wert}`).join(', ')}` : '');
     }
     const actionBtn = v.art === 'nicht_moeglich' ? null : applied
-      ? h('span', { class: 'pill st-erledigt' }, applied.startsWith('regel') ? h('a', { href: '#/automatisierung/regeln' }, 'als Regel angelegt – Freigabe offen') : 'eingeschaltet')
-      : button(v.art === 'regel' ? 'Als Regel anlegen' : 'Einschalten', async () => {
+      ? h('span', { class: 'pill st-erledigt' }, applied.startsWith('regel') ? h('a', { href: '#/automatisierung/regeln' }, 'als Regel angelegt – Freigabe offen')
+        : applied.startsWith('ablageregel') ? h('a', { href: '#/eingang?tab=regeln' }, 'Ablageregel angelegt') : 'eingeschaltet')
+      : button(v.art === 'regel' ? 'Als Regel anlegen' : v.art === 'ablageregel' ? 'Als Ablageregel anlegen' : 'Einschalten', async () => {
         try {
           const res = await api.post(`/api/ki/requests/${r.id}/apply`, { index: i });
-          toast(res.type === 'regel' ? 'Regel angelegt. Sie läuft erst nach Freigabe (Automatisierungen → Regeln).' : 'Im Katalog eingeschaltet.', 'ok', 6000);
+          toast(res.type === 'regel' ? 'Regel angelegt. Sie läuft erst nach Freigabe (Automatisierungen → Regeln).' : res.type === 'ablageregel' ? 'Ablageregel angelegt (Eingang → Regeln). Sie gilt ab der nächsten Mail.' : 'Im Katalog eingeschaltet.', 'ok', 6000);
           if (res.type === 'katalog') refreshCatalog().catch(() => {});
           show(r.id);
         } catch (e) { errorToast(e); }

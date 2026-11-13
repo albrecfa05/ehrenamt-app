@@ -61,7 +61,8 @@ Die Demo startet auf http://localhost:3001 mit Beispieldaten in einem eigenen Or
 6. **Asana übernehmen** (Adminpanel → Asana-Import): CSV-Export je Projekt, einmal importieren.
 7. **Beispielregeln freigeben** (Automatisierungen): Sie sind angelegt, laufen aber erst nach Freigabe.
 8. **Automatisierungen wählen** (Adminpanel → Automatisierungen): Was die App selbstständig tun soll.
-9. **Verbindungen** (Adminpanel → Verbindungen): Spielpläne abonnieren; Microsoft 365 nach
+9. **Ablageregeln** (Eingang → Regeln): festlegen, in welchen Ordner Mailanhänge kommen – z. B. Hallenpläne der Gemeinde, Rechnungen, Ausschreibungen.
+10. **Verbindungen** (Adminpanel → Verbindungen): Spielpläne abonnieren; Microsoft 365 nach
    [docs/MICROSOFT-365.md](docs/MICROSOFT-365.md) einrichten (Zugangsdaten in `.env`, Vorlage `.env.beispiel`).
 
 ## Dokumentation

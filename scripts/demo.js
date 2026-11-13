@@ -99,6 +99,22 @@ if (!q.get('SELECT 1 FROM sponsors LIMIT 1')) {
   ins(bt, 'Getränke Huber', '', 'Förderer', null, 'verhandlung');
 }
 
+// Beispiel-Ablageregeln und eine Beispiel-Mail mit Anhang (auch für ältere Demo-Ordner nachgetragen)
+if (!q.get('SELECT 1 FROM filing_rules LIMIT 1')) {
+  const area = (k) => q.get('SELECT id FROM areas WHERE key = ?', k).id;
+  const vor5 = q.get(`SELECT id FROM process_templates WHERE key = 'VOR-5'`).id;
+  const ins = (r) => q.run(`INSERT INTO filing_rules (name, pos, sender_contains, subject_contains, filename_contains, file_types, target_area_id, folder, data_class, occasion, mode, template_id, dismiss_mail, created_at, updated_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    r.name, r.pos, r.sender || '', r.subject || '', r.filename || '', r.types || '', r.area ?? null, r.folder, r.cls, r.occasion || '', r.mode, r.tpl ?? null, r.dismiss ? 1 : 0, nowIso(), nowIso());
+  ins({ name: 'Hallenpläne der Gemeinde', pos: 10, sender: 'gemeinde-hohberg.de', types: 'pdf', area: area('ttsf-hohberg'), folder: 'Hallenbelegung', cls: 'gruen', occasion: 'Hallenplan {{datei}}', mode: 'ablegen', dismiss: true });
+  ins({ name: 'Rechnungen', pos: 20, subject: 'Rechnung', area: area('ttsf-hohberg'), folder: 'Rechnungen', cls: 'gelb', mode: 'aufgabe', tpl: vor5 });
+  ins({ name: 'Turnier-Ausschreibungen', pos: 30, filename: 'ausschreibung', folder: 'Turniere/Ausschreibungen', cls: 'gruen', mode: 'vormerken' });
+  const { addInbound } = await import('../server/services/inbox.js');
+  addInbound(null, { channel: 'mail', sender: 'Bezirkssportwart <sport@tt-mittelbaden.de>', subject: 'Ausschreibung Bezirksmeisterschaften 2027',
+    body: 'Hallo zusammen,\nanbei die Ausschreibung für die Bezirksmeisterschaften. Meldeschluss ist der 15.01.2027.\nSportliche Grüße',
+    area_id: area('bezirk-mittelbaden'), attachments: [{ name: 'Ausschreibung_BM_2027.pdf', mime: 'application/pdf', data: Buffer.from('%PDF-1.4 Beispiel-Ausschreibung') }] });
+}
+
 server.listen(config.port, config.host, () => {
   console.log(`Demo läuft auf http://localhost:${config.port}`);
   console.log(`Zugänge: ${zugang}`);

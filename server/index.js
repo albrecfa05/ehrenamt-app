@@ -22,6 +22,7 @@ import './api/knowledge.js';
 import './api/reports.js';
 import './api/connections.js';
 import './api/ki.js';
+import './api/filing.js';
 
 export function createServer() {
   openDb();

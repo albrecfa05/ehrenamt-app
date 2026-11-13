@@ -8,7 +8,8 @@ import { tokens } from '../search.js';
 import { createTask, notify, touch, updateTask } from './tasks.js';
 import { runInboundRules } from './automation.js';
 import { isOn, param } from './catalog.js';
-import { saveInboxAttachments, readInboxAttachment, removeInboxAttachments, storeFile } from './files.js';
+import { saveInboxAttachments, removeInboxAttachments } from './files.js';
+import { applyRules, evaluate, fileAttachments } from './filing.js';
 import * as m365 from '../connectors/m365.js';
 
 // Schlüsselwörter → Vorgangsvorlage (key aus seed.js)
@@ -62,6 +63,15 @@ export function senderName(raw) {
   return s.replace(/\+?\d[\d\s/-]{6,}/g, '').trim();
 }
 
+/** Nur die Domain des Absenders (z. B. „gemeinde-hohberg.de“) – für Eingangsregeln, ohne die vollständige Adresse zu speichern. */
+export function senderDomain(...raws) {
+  for (const raw of raws) {
+    const m = String(raw || '').match(/@([A-Za-z0-9.-]+\.[A-Za-z]{2,})/);
+    if (m) return m[1].toLowerCase();
+  }
+  return '';
+}
+
 /**
  * Legt einen Eingang an. d: { channel, sender, subject, body, area_id, received_at, external_id, mailbox, conversation_id, attachments: [{name,mime,data}] }
  * Danach: Antwort zuordnen, ggf. direkt als Aufgabe übernehmen.
@@ -71,10 +81,11 @@ export function addInbound(user, d) {
   const personal = findPersonalData(d.body);
   if (personal.length) flags.push(`Enthält personenbezogene Angaben (${[...new Set(personal)].join(', ')}): als gelb behandeln`);
   const sug = suggest(d);
-  const r = q.run(`INSERT INTO inbox (area_id, channel, sender, subject, body, received_at, suggestion, flags, created_by, created_at, external_id, mailbox, conversation_id)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  const r = q.run(`INSERT INTO inbox (area_id, channel, sender, subject, body, received_at, suggestion, flags, created_by, created_at, external_id, mailbox, conversation_id, sender_domain)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     sug.area_id, d.channel, senderName(d.sender), str(d.subject, { max: 300 }), str(d.body, { max: 100_000 }), d.received_at || nowIso(),
-    JSON.stringify(sug), JSON.stringify(flags), user?.id ?? null, nowIso(), d.external_id || null, d.mailbox || null, d.conversation_id || null);
+    JSON.stringify(sug), JSON.stringify(flags), user?.id ?? null, nowIso(), d.external_id || null, d.mailbox || null, d.conversation_id || null,
+    senderDomain(d.sender_address, d.sender));
   const id = Number(r.lastInsertRowid);
   if (d.attachments?.length) {
     const meta = saveInboxAttachments(id, d.attachments);
@@ -89,6 +100,13 @@ export function addInbound(user, d) {
     const taskId = matchReply(user, item);
     if (taskId) return { ...outcome, matchedTask: taskId };
   }
+  // Eingangs- und Ablageregeln (erste passende Regel)
+  const ruled = applyRules(user, id, acceptInbox);
+  if (ruled) {
+    outcome = { ...outcome, filingRule: ruled };
+    if (['aufgabe', 'abgelegt', 'ausgesetzt', 'kein_bereich'].includes(ruled.action) || ruled.dismissed) return outcome;
+  }
+  if (q.get('SELECT status FROM inbox WHERE id = ?', id).status !== 'neu') return outcome;
   if (isOn('eingang_auto') && !flags.length && sug.sure) {
     const tpl = q.get('SELECT office_name FROM process_templates WHERE id = ?', sug.template_id);
     const office = tpl?.office_name ? q.get(`SELECT * FROM offices WHERE area_id = ? AND ? LIKE '%' || name || '%' ORDER BY length(name) DESC`, sug.area_id, tpl.office_name) : null;
@@ -120,7 +138,7 @@ export function matchReply(user, item) {
     const preview = item.body.split('\n').filter(l => l.trim() && !/^>/.test(l)).slice(0, 12).join('\n').slice(0, 1500);
     q.run('INSERT INTO comments (task_id, user_id, body, created_at) VALUES (?, NULL, ?, ?)', t.id,
       `📨 Antwort von ${item.sender || 'unbekannt'} (${item.channel}): „${item.subject}“\n\n${preview}`, nowIso());
-    attachToTask(user, item, t, 'gelb');
+    if (isOn('anhaenge_ablegen')) fileAttachments(user, item, { task: t });
     q.run(`UPDATE inbox SET status = 'uebernommen', task_id = ?, area_id = ? WHERE id = ?`, t.id, t.area_id, item.id);
     if (t.status === 'wartet') updateTask(user || { id: null, name: 'System' }, t, { status: 'in_arbeit' });
     else touch(t.id);
@@ -130,21 +148,6 @@ export function matchReply(user, item) {
   });
 }
 
-function attachToTask(user, item, task, dataClass) {
-  const atts = parseJson(item.attachments, []).filter(a => a.stored);
-  if (!atts.length || !isOn('anhaenge_ablegen')) return 0;
-  let n = 0;
-  for (const a of atts) {
-    try {
-      storeFile(user, { areaId: task.area_id, taskId: task.id, buffer: readInboxAttachment(item.id, a.stored), originalName: a.name, mime: a.mime,
-        dataClass, docDate: item.received_at.slice(0, 10), issuer: item.sender || 'Eingang', occasion: a.name.replace(/\.[^.]+$/, '') });
-      n++;
-    } catch (err) { audit(user, { entity: 'inbox', entityId: item.id, action: 'anhang_fehler', summary: `Anhang „${a.name}“ nicht abgelegt: ${err.message}` }); }
-  }
-  removeInboxAttachments(item.id);
-  return n;
-}
-
 /** Eingang als Aufgabe übernehmen. opts: area_id, title, template_id, office_id, owner_id, due_date, description, data_class, auto */
 export function acceptInbox(user, inboxId, opts) {
   return tx(() => {
@@ -152,7 +155,10 @@ export function acceptInbox(user, inboxId, opts) {
     if (!i) throw bad('Eingang nicht gefunden.');
     if (i.status !== 'neu') throw bad('Dieser Eingang wurde bereits bearbeitet.');
     const flags = parseJson(i.flags, []);
-    const personal = flags.some(f => f.startsWith('Enthält personenbezogene')) || parseJson(i.attachments, []).length > 0;
+    const atts = parseJson(i.attachments, []);
+    // Gelb, wenn die Mail personenbezogene Angaben enthält oder ein Anhang nicht ausdrücklich per Regel grün ist
+    const { perAttachment } = evaluate(i, atts);
+    const personal = flags.some(f => f.startsWith('Enthält personenbezogene')) || atts.some((a, k) => perAttachment[k]?.data_class !== 'gruen');
     const description = `${str(opts.description, { max: 10_000 })}\n\n— Eingang (${i.channel}${i.mailbox ? ', ' + i.mailbox : ''}) von ${i.sender || 'unbekannt'} am ${new Date(i.received_at).toLocaleDateString('de-DE')} —\n${i.subject ? `Betreff: ${i.subject}\n` : ''}${i.body}`.trim();
     const id = createTask(user, {
       area_id: opts.area_id, title: opts.title || i.subject || 'Eingang', description,
@@ -162,7 +168,7 @@ export function acceptInbox(user, inboxId, opts) {
     }, { source: `eingang:${i.id}` });
     q.run(`UPDATE inbox SET status = 'uebernommen', task_id = ?, area_id = ? WHERE id = ?`, id, opts.area_id, i.id);
     const task = q.get('SELECT * FROM tasks WHERE id = ?', id);
-    const n = attachToTask(user, i, task, 'gelb');
+    const n = isOn('anhaenge_ablegen') ? fileAttachments(user, i, { task }) : 0;
     audit(user, { entity: 'inbox', entityId: i.id, areaId: opts.area_id, action: 'uebernommen',
       summary: `Eingang #${i.id} ${opts.auto ? 'automatisch ' : ''}als Aufgabe #${id} übernommen${n ? `, ${n} Anhang/Anhänge abgelegt` : ''}` });
     runInboundRules(task);
@@ -170,12 +176,25 @@ export function acceptInbox(user, inboxId, opts) {
   });
 }
 
-export function dismissInbox(user, inboxId, reason = '') {
-  const i = q.get('SELECT * FROM inbox WHERE id = ?', inboxId);
-  if (!i) throw bad('Eingang nicht gefunden.');
-  q.run(`UPDATE inbox SET status = 'abgelegt' WHERE id = ?`, i.id);
-  removeInboxAttachments(i.id);
-  audit(user, { entity: 'inbox', entityId: i.id, areaId: i.area_id, action: 'abgelegt', summary: `Eingang #${i.id} ohne Aufgabe abgelegt${reason ? `: ${reason}` : ''}` });
+/**
+ * Eingang ohne Aufgabe ablegen. fileTo: { area_id, folder, data_class } legt vorher die Anhänge in der Ablage ab
+ * (sonst werden sie verworfen).
+ */
+export function dismissInbox(user, inboxId, reason = '', fileTo = null) {
+  return tx(() => {
+    const i = q.get('SELECT * FROM inbox WHERE id = ?', inboxId);
+    if (!i) throw bad('Eingang nicht gefunden.');
+    let n = 0;
+    if (fileTo) {
+      if (!fileTo.area_id) throw bad('Bitte einen Bereich für die Anhänge wählen.');
+      n = fileAttachments(user, i, { override: fileTo });
+    }
+    q.run(`UPDATE inbox SET status = 'abgelegt', area_id = COALESCE(area_id, ?) WHERE id = ?`, fileTo?.area_id ?? null, i.id);
+    removeInboxAttachments(i.id);
+    audit(user, { entity: 'inbox', entityId: i.id, areaId: i.area_id || fileTo?.area_id, action: 'abgelegt',
+      summary: `Eingang #${i.id} ohne Aufgabe abgelegt${n ? `, ${n} Anhang/Anhänge in die Ablage${fileTo.folder ? ` („${fileTo.folder}“)` : ''}` : ''}${reason ? `: ${reason}` : ''}` });
+    return n;
+  });
 }
 
 // ---------- Postfach-Abruf (Microsoft 365) ----------
@@ -202,7 +221,7 @@ export async function pollMailboxes({ force = false, user = null } = {}) {
           last = m.received_at > last ? m.received_at : last;
           if (q.get('SELECT 1 FROM inbox WHERE external_id = ?', `m365:${m.id}`)) continue;
           const attachments = m.has_attachments ? await m365.fetchAttachments(mb.address, m.id).catch(() => []) : [];
-          addInbound(user, { channel: 'mail', sender: m.sender, subject: m.subject, body: m.body, area_id: mb.area_id ? Number(mb.area_id) : null,
+          addInbound(user, { channel: 'mail', sender: m.sender, sender_address: m.sender_address, subject: m.subject, body: m.body, area_id: mb.area_id ? Number(mb.area_id) : null,
             received_at: m.received_at, external_id: `m365:${m.id}`, mailbox: mb.address, conversation_id: m.conversation_id, attachments });
           created++;
         }

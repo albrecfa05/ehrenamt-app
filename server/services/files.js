@@ -8,6 +8,8 @@ import { config } from '../config.js';
 import { assertDataClass } from '../guards.js';
 import { audit, bad, nowIso, today } from '../util.js';
 import { touch } from './tasks.js';
+import { isOn, param } from './catalog.js';
+import { requestApproval } from './automation.js';
 
 export const ALLOWED_EXT = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.heic', '.txt', '.md', '.csv', '.eml', '.msg',
   '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.ods', '.zip', '.ics', '.json', '.rtf']);
@@ -23,9 +25,57 @@ export function standardName({ doc_date, issuer, occasion, original_name }) {
   return `${parts.join(' - ').slice(0, 180)}${ext}`;
 }
 
-/** Speichert eine Datei in der Ablage und gibt { id, filename, duplicateOf } zurück. */
-export function storeFile(user, { areaId, taskId = null, buffer, originalName, mime, dataClass, docDate, issuer = '', occasion = '', tags = '', filename = null }) {
+/**
+ * Themen-Ordner bereinigen: höchstens drei Ebenen, getrennt durch „/“, ohne verbotene Zeichen.
+ * Beispiel: "Sponsoring / Verträge" → "Sponsoring/Verträge"
+ */
+export function cleanFolder(folder) {
+  return String(folder || '').split(/[\\/]+/).map(s => cleanName(s).replace(/^\.+/, '').slice(0, 60)).filter(Boolean).slice(0, 3).join('/');
+}
+
+/** Pfad in der Vereinsablage (SharePoint/OneDrive): Bereich/Ordner/Jahr/Datei */
+export function mirrorPath(f) {
+  const area = q.get('SELECT name FROM areas WHERE id = ?', f.area_id)?.name || 'Ablage';
+  return [cleanName(area), ...(f.folder ? f.folder.split('/') : []), (f.doc_date || today()).slice(0, 4), f.filename].join('/');
+}
+
+/**
+ * Kopie in die Vereinsablage vorschlagen (Stufe 3 → Freigabe). force = Regel verlangt es ausdrücklich;
+ * sonst entscheidet der Automatisierungskatalog „Ablage nach SharePoint/OneDrive kopieren“.
+ */
+export function maybeMirror(user, fileId, { force = false } = {}) {
+  if (!isOn('ablage_spiegeln')) return null;
+  const f = q.get('SELECT * FROM files WHERE id = ?', fileId);
+  if (!f || f.remote_url) return null;
+  if (!force && f.data_class !== 'gruen' && param('ablage_spiegeln', 'nur_gruen')) return null;
+  const p = mirrorPath(f);
+  return requestApproval({ actionType: 'ablage_hochladen', payload: { kind: 'ablage_hochladen', area_id: f.area_id, file_id: f.id, path: p },
+    summary: `Datei „${f.filename}“ nach SharePoint/OneDrive kopieren (${p})`, taskId: f.task_id, user });
+}
+
+/**
+ * Speichert eine Datei in der Ablage und gibt { id, filename, duplicateOf, reused } zurück.
+ * reuseDuplicate: liegt dieselbe Datei schon im Bereich, wird keine zweite Kopie angelegt (für automatisches Ablegen).
+ */
+export function storeFile(user, { areaId, taskId = null, buffer, originalName, mime, dataClass, docDate, issuer = '', occasion = '', tags = '', filename = null,
+  folder = '', mirror = 'auto', reuseDuplicate = false }) {
   assertDataClass(dataClass);
+  if (reuseDuplicate && buffer?.length) {
+    const sha = crypto.createHash('sha256').update(buffer).digest('hex');
+    const existing = q.get('SELECT id, filename, task_id FROM files WHERE sha256 = ? AND area_id = ? AND deleted_at IS NULL', sha, areaId);
+    if (existing) {
+      if (taskId && !existing.task_id) q.run('UPDATE files SET task_id = ? WHERE id = ?', taskId, existing.id);
+      return { id: existing.id, filename: existing.filename, duplicateOf: existing, reused: true };
+    }
+  }
+  const result = storeNew(user, { areaId, taskId, buffer, originalName, mime, dataClass, docDate, issuer, occasion, tags, filename, folder: cleanFolder(folder) });
+  if (mirror !== 'never') {
+    try { maybeMirror(user, result.id, { force: mirror === 'force' }); } catch { /* Vorschlag ist optional */ }
+  }
+  return result;
+}
+
+function storeNew(user, { areaId, taskId, buffer, originalName, mime, dataClass, docDate, issuer, occasion, tags, filename, folder }) {
   const original = cleanName(originalName).slice(0, 200) || 'Datei';
   const ext = path.extname(original).toLowerCase();
   if (!ALLOWED_EXT.has(ext)) throw bad(`Dateityp ${ext || '(ohne Endung)'} wird nicht angenommen.`);
@@ -42,11 +92,11 @@ export function storeFile(user, { areaId, taskId = null, buffer, originalName, m
   const sha256 = crypto.createHash('sha256').update(buffer).digest('hex');
   const dupe = q.get('SELECT id, filename FROM files WHERE sha256 = ? AND area_id = ? AND deleted_at IS NULL', sha256, areaId);
   const text = TEXT_EXT.has(ext) ? buffer.toString('utf8').slice(0, 200_000) : '';
-  const r = q.run(`INSERT INTO files (area_id, task_id, filename, original_name, stored_path, mime, size, sha256, doc_date, issuer, occasion, tags, data_class, text_content, uploaded_by, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    areaId, taskId, name, original, rel, String(mime || 'application/octet-stream').slice(0, 100), buffer.length, sha256, date, issuer, occasion, tags, dataClass, text, user?.id ?? null, nowIso());
+  const r = q.run(`INSERT INTO files (area_id, task_id, filename, original_name, stored_path, mime, size, sha256, doc_date, issuer, occasion, tags, data_class, text_content, uploaded_by, created_at, folder)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    areaId, taskId, name, original, rel, String(mime || 'application/octet-stream').slice(0, 100), buffer.length, sha256, date, issuer, occasion, tags, dataClass, text, user?.id ?? null, nowIso(), folder);
   const id = Number(r.lastInsertRowid);
-  audit(user, { entity: taskId ? 'task' : 'file', entityId: taskId || id, areaId, action: 'datei', summary: `Datei „${name}“ abgelegt (${dataClass === 'gelb' ? 'gelb' : 'grün'})` });
+  audit(user, { entity: taskId ? 'task' : 'file', entityId: taskId || id, areaId, action: 'datei', summary: `Datei „${name}“ abgelegt${folder ? ` in „${folder}“` : ''} (${dataClass === 'gelb' ? 'gelb' : 'grün'})` });
   if (taskId) touch(taskId);
   return { id, filename: name, duplicateOf: dupe || null };
 }

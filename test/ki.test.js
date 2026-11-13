@@ -134,3 +134,31 @@ test('Zuarbeit hat keinen Zugriff', async () => {
   assert.equal(r.status, 403);
   assert.ok(u.data.id);
 });
+
+test('KI schlägt Ablageregeln vor; Adressen werden abgewiesen', async () => {
+  const emptyFiling = { name: '', bedingung_bereich: '', absender_enthaelt: '', betreff_enthaelt: '', dateiname_enthaelt: '', dateitypen: '', zielbereich: '',
+    ordner: '', datenklasse: 'gelb', anlass: '', modus: 'vormerken', vorgang: '', sharepoint: false, mail_entfernen: false };
+  nextResponse = message({
+    zusammenfassung: 'Zwei Ablageregeln.',
+    vorschlaege: [
+      { art: 'ablageregel', titel: 'Sponsorenrechnungen', begruendung: 'Rechnungen landen gesammelt im Ordner.', nutzen: 'Findet man wieder', regel: emptyRule, katalog: emptyCat,
+        ablageregel: { ...emptyFiling, name: 'Sponsorenrechnungen', betreff_enthaelt: 'Rechnung', dateitypen: 'pdf', zielbereich: 'TTSF Hohberg', ordner: 'Sponsoring/Rechnungen', modus: 'ablegen', datenklasse: 'gruen', sharepoint: true } },
+      { art: 'ablageregel', titel: 'Kaputt', begruendung: '', nutzen: '', regel: emptyRule, katalog: emptyCat,
+        ablageregel: { ...emptyFiling, name: 'Mit Adresse', absender_enthaelt: 'kassierer@verein.de', ordner: 'Kasse' } },
+    ],
+    rueckfragen: [],
+  });
+  const r = await admin.post('/api/ki/ask', { mode: 'beschreibung', text: 'Rechnungen von Sponsoren sollen immer in einen eigenen Ordner.' });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.ok(JSON.stringify(received.at(-1).body.output_config.format.schema).includes('ablageregel'));
+  const req = await admin.get(`/api/ki/requests/${r.data.id}`);
+  assert.deepEqual(req.data.checks.map(c => c.ok), [true, false]);
+  assert.match(req.data.checks[1].fehler[0], /Mailadresse/);
+  const a = await admin.post(`/api/ki/requests/${r.data.id}/apply`, { index: 0 });
+  assert.equal(a.data.type, 'ablageregel');
+  const rules = await admin.get('/api/filing-rules');
+  const fr = rules.data.rules.find(x => x.id === a.data.id);
+  assert.equal(fr.folder, 'Sponsoring/Rechnungen');
+  assert.equal(fr.mirror, 1);
+  assert.match(fr.origin, /KI-Vorschlag/);
+});

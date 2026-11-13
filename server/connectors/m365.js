@@ -137,6 +137,7 @@ export async function fetchMail(address, sinceIso, max = 50) {
     id: m.id,
     subject: m.subject || '',
     sender: m.from?.emailAddress?.name || m.from?.emailAddress?.address || '',
+    sender_address: m.from?.emailAddress?.address || '',   // nur zur Ermittlung der Domain, wird nicht gespeichert
     received_at: m.receivedDateTime,
     body: m.body?.content || '',
     has_attachments: !!m.hasAttachments,

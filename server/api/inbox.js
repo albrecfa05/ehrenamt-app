@@ -4,6 +4,9 @@ import { get, post } from '../http.js';
 import { q } from '../db.js';
 import { assertArea, canSeeArea, requireAdmin } from '../access.js';
 import { acceptInbox, addInbound, dismissInbox, pollMailboxes } from '../services/inbox.js';
+import { preview as filingPreview } from '../services/filing.js';
+import { cleanFolder } from '../services/files.js';
+import { assertDataClass } from '../guards.js';
 import { bad, int, notFound, nowIso, oneOf, parseJson, str } from '../util.js';
 import { getSetting } from '../db.js';
 
@@ -14,7 +17,8 @@ get('/api/inbox', ({ user, query }) => {
   return q.all(`SELECT i.*, a.name AS area_name, u.name AS created_by_name FROM inbox i LEFT JOIN areas a ON a.id = i.area_id
                 LEFT JOIN users u ON u.id = i.created_by WHERE i.status = ? ORDER BY i.received_at DESC LIMIT 300`, status)
     .filter(i => (i.area_id == null ? user.role === 'admin' : canSeeArea(user, i.area_id)))
-    .map(i => ({ ...i, suggestion: parseJson(i.suggestion, {}), flags: parseJson(i.flags, []), attachments: parseJson(i.attachments, []) }));
+    .map(i => ({ ...i, suggestion: parseJson(i.suggestion, {}), flags: parseJson(i.flags, []), attachments: parseJson(i.attachments, []),
+      filing: i.status === 'neu' ? filingPreview(i) : null }));
 });
 
 // Manuelle Erfassung (WhatsApp, Post, Telefon) oder eingefügte Mail
@@ -62,8 +66,13 @@ post('/api/inbox/:id/dismiss', ({ user, params, body }) => {
   const i = q.get('SELECT * FROM inbox WHERE id = ?', int(params.id));
   if (!i) throw notFound();
   if (i.area_id && !canSeeArea(user, i.area_id)) throw notFound();
-  dismissInbox(user, i.id, str(body.reason, { max: 300 }));
-  return { ok: true };
+  let fileTo = null;
+  if (body.file_attachments) {
+    fileTo = { area_id: int(body.area_id, { nullable: false, name: 'Bereich' }), folder: cleanFolder(body.folder), data_class: assertDataClass(body.data_class || 'gelb') };
+    assertArea(user, fileTo.area_id);
+  }
+  const filed = dismissInbox(user, i.id, str(body.reason, { max: 300 }), fileTo);
+  return { ok: true, filed };
 });
 
 // ---------- Minimaler .eml-Leser (RFC 5322 / MIME) mit Anhängen ----------

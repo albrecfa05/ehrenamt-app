@@ -661,3 +661,23 @@ input.switch:checked::after { transform: translateX(16px); }
 .ki-proposal .rule-flow { margin-top: 6px; }
 .pad-sm { padding: 6px 0; }
 .ki-proposal .ap-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+
+/* ---------- Ordner und Ablageregeln ---------- */
+.folder-nav { padding: 6px; }
+.folder-link { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.folder-link small { display: inline; }
+.folder-label { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.folder-nav .nav-title { margin-top: 8px; }
+.attach-table { padding: 0 16px 10px; display: flex; flex-direction: column; gap: 4px; }
+.attach-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.att-name { font-weight: 550; }
+.att-target { color: var(--text-2); }
+.rule-no { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--surface-3); font-size: .72rem; font-weight: 700; color: var(--text-2); }
+.bulk-bar .w-folder { width: 240px; }
+.bulk-bar > div { display: inline-block; }
+.split > .list-main { overflow-x: auto; }
+.list-main .files-table { overflow: visible; min-width: 760px; }
+.list-main .files-table td:nth-child(2) { min-width: 260px; }
+.list-main .files-table td:nth-child(2) a { overflow-wrap: anywhere; }
+.list-main .files-table td:nth-child(3) { min-width: 120px; }
+.split:has(.folder-nav) { grid-template-columns: 220px minmax(0, 1fr); }

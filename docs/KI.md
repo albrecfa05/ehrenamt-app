@@ -9,7 +9,7 @@ Vorschlägen; die App prüft sie, ein Admin übernimmt sie.
 | | |
 | --- | --- |
 | **Rolle** | Berater auf Stufe 1 („Entwurf“). Claude bekommt keine Werkzeuge und kann nichts ausführen. |
-| **Vorschlagsarten** | neue Regel (Auslöser → Aktion), fertigen Katalog-Ablauf einschalten, „nicht möglich, weil …“ |
+| **Vorschlagsarten** | neue Regel (Auslöser → Aktion), Ablageregel für Mailanhänge, fertigen Katalog-Ablauf einschalten, „nicht möglich, weil …“ |
 | **Prüfung** | Jeder Vorschlag läuft durch dieselben Prüfungen wie eine von Hand angelegte Regel: Sperrliste (AUT-8), Höchststufe des Vorgangs (AUT-1), Pflichtangaben, existierende Vorlagen. Ungültige Vorschläge lassen sich nicht übernehmen. |
 | **Übernahme** | nur durch einen Admin, einzeln per Klick. Neue Regeln sind danach **nicht freigegeben** und laufen erst nach der üblichen Freigabe (ROL-3). |
 | **Nachvollziehbarkeit** | Jede Anfrage steht mit Eingabe, Antwort, Prüfergebnis, Tokens und Übernahmen in der App und im Protokoll. |
@@ -18,7 +18,8 @@ Vorschlägen; die App prüft sie, ein Admin übernimmt sie.
 
 - Die Beschreibung des Admins – vorher automatisch bereinigt (Adressen, Telefonnummern, Mailadressen, Bankdaten werden entfernt).
 - Die Bausteine der App: Auslöser, Aktionen, Stufen, Automatisierungskatalog, Namen von Bereichen, Ämtern, Vorgangs- und Textvorlagen, bestehende Regeln.
-- Nur bei „Ideen finden“: Zählwerte der letzten 90 Tage (Aufgaben je Vorgang, Minuten, Eingangskanäle, Überfällige) und bis zu 60 **Titel von Aufgaben mit grüner Datenklasse** ohne Vorlage.
+- Nur bei „Ideen finden“: Zählwerte der letzten 90 Tage (Aufgaben je Vorgang, Minuten, Eingangskanäle, Überfällige), bis zu 60 **Titel von Aufgaben mit grüner Datenklasse** ohne Vorlage und die häufigsten **Absender-Domains von Organisationen** (keine privaten Mailanbieter wie gmx.de oder gmail.com).
+- Bestehende Ablageregeln und Ordnernamen, damit Vorschläge dazu passen.
 - **Nie:** gelbe Aufgaben, Beschreibungen, Kommentare, Eingänge, Dateien, Mitglieder- oder Bankdaten.
 
 In der Oberfläche zeigt „Was wird an Claude übertragen?“ den genauen Inhalt.

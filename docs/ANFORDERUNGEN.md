@@ -136,3 +136,8 @@ Datenklasse, zugeordneten Textvorlagen und Rechnern angelegt. Neue Vorgangstypen
 | Datenschutz-Auskunft je Person | NFA-12 | Adminpanel → Datenschutz |
 | Tests gegen simulierten Microsoft-Server, inkl. Nachweis „nie versendet“ | ABN-5, AUT-14 | `test/integrations.test.js` |
 | KI-Assistent: Claude entwirft Regeln und Katalog-Einstellungen aus einer Beschreibung oder aus Zählwerten; App prüft, Admin übernimmt, Regel braucht Freigabe | Kap. 6, ROL-2, ROL-3, DAT-2 | Automatisierungen → Mit KI erstellen; `test/ki.test.js` |
+| Eingangs- und Ablageregeln: Anhänge nach Absender/Domain, Betreff, Dateiname, Dateityp in Bereich und Themen-Ordner; nur ablegen, Aufgabe anlegen oder vormerken; Probelauf | 1.1 („Mailanhänge fehlen ein halbes Jahr später“), ABL-1, ABL-2, AUT-10 | Eingang → Regeln; `test/filing.test.js` |
+| Themen-Ordner in der Ablage mit Ordnerleiste, Verschieben, Ordner auch in der SharePoint-Kopie | ABL-1, DAT-6 | Ablage |
+| Anhänge ohne Aufgabe ablegen; SharePoint-Kopie auch für Mailanhänge | ABL-1 | Eingang → Ablegen |
+| Verpasste Zeitplan-Läufe werden nachgeholt (bis 3 Tage, nie vor der Freigabe); Frist-Regeln greifen für alles bis X Tage vor der Frist | AUT-2, AUT-13 | `services/automation.js` |
+| KI schlägt auch Ablageregeln vor | Kap. 6 | Automatisierungen → Mit KI erstellen |

@@ -22,6 +22,24 @@ Kurzanleitung für alle, die mit der App arbeiten. Die Hilfe in der App (unten l
 - **Abschließen:** Beim Status „Erledigt“ fragt die App nach Erfahrungen für den nächsten Durchlauf.
 - **Lernprotokoll:** Korrekturen oder Entscheidungen, die künftig gelten sollen, über „Ins Lernprotokoll“ festhalten.
 
+## Eingang und Ablage: Regeln
+
+Unter **Eingang → Regeln** (nur Admins) legst du fest, wohin Mailanhänge kommen:
+
+- **Wenn** Absender (Name oder Domain, z. B. `gemeinde-hohberg.de`), Betreff, Dateiname oder Dateityp passen,
+- **dann** Bereich, Ordner (z. B. `Sponsoring/Rechnungen`), Datenklasse und Anlass im Dateinamen –
+- und mit der Mail: **nur ablegen** (ohne Aufgabe, Mail optional danach erledigt), **Aufgabe anlegen** (mit Vorgang) oder **vormerken** (gilt, wenn jemand die Mail übernimmt).
+
+Die erste passende Regel gewinnt; die Reihenfolge lässt sich mit den Pfeilen ändern. Der **Probelauf** zeigt vorher,
+welche Regel bei einer Beispiel-Mail greifen würde. Auffällige Mails (Zahlungsdruck, Passwortfragen, Gesundheitsangaben)
+sortiert die App nie automatisch ein, und Mails mit Personendaten bleiben gelb – egal, was die Regel sagt.
+Gleiche Dateien werden nicht doppelt abgelegt.
+
+Im Eingang steht bei jedem Anhang, wohin er ginge. Beim **Ablegen ohne Aufgabe** fragt die App, ob die Anhänge in die
+Ablage sollen (mit Bereich, Ordner, Datenklasse) – sonst werden sie verworfen.
+
+In der **Ablage** zeigt die Ordnerleiste links alle Themen-Ordner; mehrere Dateien lassen sich auf einmal verschieben.
+
 ## Freigaben (nur Admins)
 
 Alles, was die App verlässt, braucht vor jeder Ausführung dein Ja: unter **Automatisierungen → Freigaben**.

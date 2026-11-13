@@ -8,6 +8,7 @@ import { applyProposal, ask, previewContext, requestView, setRuleValidator } fro
 import { status as claudeStatus } from '../connectors/claude.js';
 import { bad, int, notFound, oneOf } from '../util.js';
 import { cleanRule, insertRule } from './automation.js';
+import { insertFilingRule } from './filing.js';
 
 setRuleValidator(cleanRule);
 
@@ -46,5 +47,5 @@ get('/api/ki/requests/:id', ({ user, params }) => {
 
 post('/api/ki/requests/:id/apply', ({ user, params, body }) => {
   requireAdmin(user);
-  return applyProposal(user, int(params.id), int(body.index, { min: 0, nullable: false, name: 'Vorschlag' }), insertRule);
+  return applyProposal(user, int(params.id), int(body.index, { min: 0, nullable: false, name: 'Vorschlag' }), insertRule, insertFilingRule);
 });
