@@ -16,7 +16,7 @@ import { clockNow, nowMs } from '../clock.js';
 // Schlüsselwörter → Vorgangsvorlage (key aus seed.js)
 const TEMPLATE_HINTS = [
   [/schiedsrichter|schiri|ersatz/i, 'VOR-3'], [/verleg|spielverlegung|termin.*spiel/i, 'VOR-3'],
-  [/aufnahme|beitritt|mitglied werden|anmeldung.*verein|neues mitglied/i, 'VOR-1'],
+  [/aufnahme|beitritt|mitglied werden|mitgliedsantrag|antrag auf mitgliedschaft|anmeldung.*verein|neues mitglied/i, 'VOR-1'],
   [/kündig|kuendig|austritt|beitragsstufe|ermäßig/i, 'VOR-2'],
   [/mannschaftsmeldung|aufstellung|meldung.*mannschaft/i, 'VOR-4'],
   [/spendenbescheinigung|zuwendungsbestätigung|verzicht|förderantrag|zuschuss|trainerförderung|sponsorenrechnung|rechnung.*sponsor/i, 'VOR-5'],
@@ -53,7 +53,7 @@ export function suggest({ subject, body, area_id }) {
     const cand = `${y}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
     if (!Number.isNaN(Date.parse(cand))) due = cand < today() && !m[3] ? `${Number(y) + 1}${cand.slice(4)}` : cand;
   }
-  const title = (subject || body.split('\n').find(l => l.trim()) || 'Eingang').replace(/^((re|aw|fwd?|wg)\s*:\s*)+/i, '').slice(0, 160);
+  const title = (subject || body.split('\n').find(l => l.trim()) || 'Eingang').replace(/^((re|aw|fwd?|wg|scan)\s*:\s*)+/i, '').slice(0, 160);
   return { area_id: areaId, template_id: tpl?.id || null, template_name: tpl?.name || null, title, due_date: due || addDays(today(), 7),
     sure: !!(areaId && areaSure && tpl && keys.length === 1) };
 }

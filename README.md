@@ -90,6 +90,8 @@ führt durch die Punkte 1–5, 7, 8 und 10. Die vollständige Liste:
 
 ## Dokumentation
 
+**Bebilderte Anleitung:** [docs/anleitung/index.html](docs/anleitung/index.html) – im Browser öffnen (Doppelklick). Erklärt alle Funktionen und den Simulator mit Screenshots.
+
 | Dokument | Inhalt |
 | --- | --- |
 | [docs/BEDIENUNG.md](docs/BEDIENUNG.md) | Bedienung für Amtsträger: Aufgaben, Vorgänge, Entwürfe, Freigaben |

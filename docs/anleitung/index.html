@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ehrenamt-App – Anleitung</title>
+<style>
+:root {
+  --bg: #f7f6f3; --surface: #fff; --surface-2: #f0eee9; --border: #e3dfd7; --text: #1f2328; --muted: #6a6f76;
+  --accent: #2456d6; --accent-soft: #e6edfc; --orange: #e0620d; --orange-soft: #fdeadc; --green: #1a7f3c; --green-soft: #dcf3e3;
+  --red: #b42318; --red-soft: #fde4e1; --yellow: #a16207; --yellow-soft: #fdf3d4; --violet: #6d28d9; --violet-soft: #ede5fd;
+  --radius: 12px; --shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 18px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #15171a; --surface: #1d2024; --surface-2: #262a2f; --border: #33383e; --text: #e8eaed; --muted: #9aa1a9;
+    --accent: #7ea3ff; --accent-soft: #1d2a47; --orange: #fb923c; --orange-soft: #3a2616; --green: #4ade80; --green-soft: #173024;
+    --red: #f87171; --red-soft: #3b1d1d; --yellow: #facc15; --yellow-soft: #3a3115; --violet: #c4b5fd; --violet-soft: #2a2145; --shadow: none; }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 16px; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+a { color: var(--accent); }
+code, kbd { font-family: ui-monospace, Consolas, monospace; font-size: .88em; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px; }
+kbd { box-shadow: inset 0 -1px 0 var(--border); }
+pre { background: #1f2328; color: #e8eaed; padding: 12px 16px; border-radius: 10px; overflow-x: auto; font-size: .9rem; }
+pre code { background: none; border: 0; padding: 0; color: inherit; }
+
+.hero { background: linear-gradient(135deg, #1e3a8a, #2456d6 55%, #e0620d); color: #fff; padding: 56px 24px 48px; }
+.hero-inner { max-width: 1180px; margin: 0 auto; }
+.hero h1 { font-size: clamp(1.9rem, 4vw, 2.8rem); margin: 0 0 10px; line-height: 1.15; }
+.hero p { max-width: 760px; font-size: 1.12rem; margin: 0; opacity: .95; }
+.hero .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.hero .chips span { background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.3); padding: 4px 12px; border-radius: 20px; font-size: .9rem; }
+
+.layout { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 36px; padding: 32px 24px 80px; }
+.toc { position: sticky; top: 16px; align-self: start; max-height: calc(100vh - 32px); overflow: auto; font-size: .92rem; }
+.toc strong { display: block; font-size: .75rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 0 0 8px; }
+.toc a { display: block; color: var(--text); text-decoration: none; padding: 4px 10px; border-left: 2px solid var(--border); }
+.toc a:hover { border-left-color: var(--accent); color: var(--accent); }
+.toc a.sub { padding-left: 22px; font-size: .86rem; color: var(--muted); }
+
+main section { margin-bottom: 56px; }
+h2 { font-size: 1.65rem; margin: 0 0 6px; display: flex; align-items: center; gap: 12px; }
+h2 .num { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--accent); color: #fff; font-size: 1rem; flex: none; }
+h3 { font-size: 1.2rem; margin: 32px 0 6px; }
+.lead { color: var(--muted); font-size: 1.05rem; margin-top: 0; }
+
+figure { margin: 18px 0 26px; }
+figure a { display: block; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); background: var(--surface); }
+figure img { display: block; width: 100%; height: auto; transition: transform .2s; }
+figure a:hover img { transform: scale(1.01); }
+figcaption { font-size: .88rem; color: var(--muted); margin-top: 8px; }
+.duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.duo figure { margin: 8px 0 14px; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin: 16px 0; }
+.cards .card h4 { margin: 0 0 4px; font-size: 1rem; }
+.cards .card p { margin: 0; font-size: .92rem; color: var(--muted); }
+.ico { font-size: 1.4rem; display: block; margin-bottom: 6px; }
+
+.note { border-radius: var(--radius); padding: 14px 18px; margin: 16px 0; border-left: 4px solid; }
+.note.tip { background: var(--accent-soft); border-color: var(--accent); }
+.note.warn { background: var(--orange-soft); border-color: var(--orange); }
+.note.ok { background: var(--green-soft); border-color: var(--green); }
+.note strong:first-child { display: block; margin-bottom: 2px; }
+
+.steps { counter-reset: s; list-style: none; padding: 0; margin: 14px 0; }
+.steps > li { counter-increment: s; position: relative; padding: 0 0 14px 46px; }
+.steps > li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 30px; height: 30px; border-radius: 50%; background: var(--orange); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: .9rem; }
+.steps > li::after { content: ""; position: absolute; left: 14px; top: 32px; bottom: 2px; width: 2px; background: var(--border); }
+.steps > li:last-child::after { display: none; }
+
+table { border-collapse: collapse; width: 100%; font-size: .94rem; background: var(--surface); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { background: var(--surface-2); font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+.tablewrap { overflow-x: auto; margin: 14px 0; }
+
+.ampel { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 14px 0; }
+.ampel div { border-radius: var(--radius); padding: 12px 14px; }
+.ampel .rot { background: var(--red-soft); border-left: 4px solid var(--red); }
+.ampel .gelb { background: var(--yellow-soft); border-left: 4px solid var(--yellow); }
+.ampel .gruen { background: var(--green-soft); border-left: 4px solid var(--green); }
+.stufen { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 14px 0; }
+.stufen div { background: var(--surface); border: 1px solid var(--border); border-top: 4px solid var(--accent); border-radius: 10px; padding: 10px 12px; font-size: .88rem; }
+.stufen b { display: block; font-size: .95rem; }
+.tag { display: inline-block; font-size: .78rem; padding: 1px 9px; border-radius: 12px; background: var(--surface-2); color: var(--muted); }
+.tag.v { background: var(--violet-soft); color: var(--violet); }
+footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 0 24px 40px; }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; padding: 20px 16px 60px; }
+  .toc { position: static; max-height: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .duo, .ampel { grid-template-columns: 1fr; }
+  .stufen { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hero { padding: 36px 16px 32px; }
+}
+@media print { .toc { display: none; } .layout { grid-template-columns: 1fr; } .hero { background: none; color: var(--text); } figure { break-inside: avoid; } }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <h1>Ehrenamt-App – Anleitung</h1>
+    <p>Was die App für den Vorstand im Tischtennis-Ehrenamt alles kann, wie man sie einrichtet und täglich benutzt – und wie man mit dem Vorstandsarbeit-Simulator alles gefahrlos ausprobiert.</p>
+    <div class="chips"><span>Aufgaben &amp; Vorgänge</span><span>Eingang &amp; Ablage</span><span>Automatisierungen mit Freigabe</span><span>Microsoft 365</span><span>KI-Assistent</span><span>Simulator mit Fantasiedaten</span></div>
+  </div>
+</header>
+
+<div class="layout">
+<nav class="toc" aria-label="Inhalt">
+  <strong>Inhalt</strong>
+  <a href="#ueberblick">1 · Was die App ist</a>
+  <a href="#starten">2 · Starten</a>
+  <a href="#einrichten">3 · Einrichten</a>
+  <a class="sub" href="#assistent">Einrichtungsassistent</a>
+  <a class="sub" href="#datenschutz">Datenschutz-Schalter</a>
+  <a href="#alltag">4 · Der Alltag</a>
+  <a class="sub" href="#uebersicht">Übersicht</a>
+  <a class="sub" href="#eingang">Eingang</a>
+  <a class="sub" href="#aufgaben">Aufgaben und Vorgänge</a>
+  <a class="sub" href="#kalender">Kalender</a>
+  <a class="sub" href="#ablage">Ablage und Regeln</a>
+  <a class="sub" href="#auskunft">Auskunft</a>
+  <a class="sub" href="#sponsoren">Sponsoren und mehr</a>
+  <a href="#automatik">5 · Automatisieren</a>
+  <a class="sub" href="#stufen">Stufen und Freigaben</a>
+  <a class="sub" href="#katalog">Katalog und Regeln</a>
+  <a class="sub" href="#ki">KI-Assistent</a>
+  <a class="sub" href="#verbindungen">Verbindungen</a>
+  <a href="#simulator">6 · Simulator</a>
+  <a class="sub" href="#welt">Die Vereinswelt</a>
+  <a class="sub" href="#durchlauf">Beispiel: Mitgliedsantrag</a>
+  <a class="sub" href="#ereignisse">Ereignisse</a>
+  <a href="#tipps">7 · Tipps und Hilfe</a>
+</nav>
+
+<main>
+
+<!-- 1 -->
+<section id="ueberblick">
+  <h2><span class="num">1</span>Was die App ist</h2>
+  <p class="lead">Eine gemeinsame Arbeitsoberfläche für den Vorstand – statt verstreuter Mails, WhatsApp-Gruppen, privater Ordner und Asana-Listen.</p>
+  <div class="cards">
+    <div class="card"><span class="ico">✅</span><h4>Aufgaben mit Anleitung</h4><p>Jeder wiederkehrende Ablauf (Neuaufnahme, Spielverlegung, Einladung …) hat feste Teilschritte – auch eine Vertretung kann ihn ohne Rückfrage erledigen.</p></div>
+    <div class="card"><span class="ico">📥</span><h4>Ein Eingang für alles</h4><p>Mails aus den Funktionspostfächern, WhatsApp, Post, Telefon – alles landet an einer Stelle und wird zur Aufgabe oder abgelegt.</p></div>
+    <div class="card"><span class="ico">🗂️</span><h4>Eine Ablage</h4><p>Einheitliche Dateinamen, Themen-Ordner, Ablageregeln für Mailanhänge, optional als Kopie in SharePoint.</p></div>
+    <div class="card"><span class="ico">📅</span><h4>Jahreskalender und Spielpläne</h4><p>Feste Termine des Vereinsjahres erzeugen rechtzeitig Aufgaben; click-TT-Spielpläne bringen Heimspieltage mit.</p></div>
+    <div class="card"><span class="ico">📖</span><h4>Auskunft mit Fundstelle</h4><p>Fragen zu Satzung und Ordnungen – die Antwort nennt immer den Paragrafen.</p></div>
+    <div class="card"><span class="ico">⚡</span><h4>Automatisierungen</h4><p>Erinnern, nachfassen, Entwürfe vorbereiten – nach festen Stufen, Externes nur nach Freigabe. Auf Wunsch mit KI entworfen.</p></div>
+  </div>
+  <h3>Die Grundsätze</h3>
+  <p><strong>Daten nach Ampel.</strong> Jede Aufgabe und jede Datei hat eine Datenklasse:</p>
+  <div class="ampel">
+    <div class="rot"><strong>Rot – nie</strong><br>Gesundheitsangaben, Zugangsdaten. Die App nimmt sie nicht an.</div>
+    <div class="gelb"><strong>Gelb – nur im Vorgang</strong><br>Stammdaten, Bankdaten, Daten Minderjähriger.</div>
+    <div class="gruen"><strong>Grün – dauerhaft</strong><br>Satzung, Vorlagen, öffentliche Spielpläne.</div>
+  </div>
+  <p><strong>Nichts passiert heimlich.</strong> Die App verschickt keine Mails, löst keine Zahlungen aus und bestellt nichts – das ist technisch gesperrt. Alles, was nach außen geht (Entwurf ins Postfach, Termin in Outlook, Datei in SharePoint), braucht das Ja eines Admins. Jede Aktion steht im unveränderlichen <strong>Protokoll</strong>.</p>
+</section>
+
+<!-- 2 -->
+<section id="starten">
+  <h2><span class="num">2</span>Starten</h2>
+  <p class="lead">Voraussetzung ist Node.js ab Version 22.13 (nodejs.org, „LTS“). Befehle im Projektordner <code>Aus Lastenheft</code> ausführen.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Befehl</th><th>Was startet</th><th>Im Browser</th></tr></thead>
+    <tbody>
+      <tr><td><code>npm start</code></td><td>Die echte App (Daten in <code>data/</code>)</td><td>localhost:3000</td></tr>
+      <tr><td><code>npm run demo</code></td><td>Demo mit Beispieldaten (<code>data-demo/</code>)</td><td>localhost:3001</td></tr>
+      <tr><td><code>npm run simulator</code></td><td>Vereinswelt <em>und</em> leere App (<code>data-simulator/</code>)</td><td>localhost:3002 und :3004</td></tr>
+      <tr><td><code>npm run leer</code></td><td>Ganz leere App zum Üben der Einrichtung</td><td>localhost:3003</td></tr>
+      <tr><td><code>npm test</code></td><td>Automatische Tests</td><td>–</td></tr>
+      <tr><td><code>npm run backup</code></td><td>Sicherung von Datenbank und Ablage</td><td>–</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note warn"><strong>Windows-PowerShell meldet „Ausführung von Skripts deaktiviert“?</strong>Dann <code>npm.cmd</code> statt <code>npm</code> schreiben, z. B. <code>npm.cmd run simulator</code> – oder die Eingabeaufforderung (<code>cmd</code>) benutzen.</div>
+  <p>Das Terminal-Fenster bleibt offen, solange die App läuft. Beenden mit <kbd>Strg</kbd> + <kbd>C</kbd>. Mit <code>-- --neu</code> hinter <code>simulator</code> oder <code>leer</code> beginnt man ganz von vorn.</p>
+</section>
+
+<!-- 3 -->
+<section id="einrichten">
+  <h2><span class="num">3</span>Einrichten</h2>
+  <p class="lead">Beim ersten Aufruf wird das erste Admin-Konto angelegt. Danach öffnet sich der Einrichtungsassistent von selbst.</p>
+  <figure><a href="bilder/app-ersteinrichtung.jpg" target="_blank"><img src="bilder/app-ersteinrichtung.jpg" alt="Ersteinrichtung: Formular für das erste Admin-Konto" loading="lazy"></a>
+    <figcaption>Ersteinrichtung: Name, Anmeldename und ein starkes Passwort (mind. 12 Zeichen, drei Zeichenarten).</figcaption></figure>
+
+  <h3 id="assistent">Der Einrichtungsassistent</h3>
+  <p>Links die neun Schritte mit ihrem <strong>echten Stand</strong> aus den Daten, rechts das passende Formular. Nichts ist endgültig – alles bleibt im Adminpanel änderbar.</p>
+  <figure><a href="bilder/app-assistent.jpg" target="_blank"><img src="bilder/app-assistent.jpg" alt="Einrichtungsassistent, Schritt Personen und Ämter" loading="lazy"></a>
+    <figcaption>Schritt „Personen und Ämter“: Konten anlegen (das vorläufige Passwort wird einmal angezeigt) und je Amt Inhaber und Vertretung wählen.</figcaption></figure>
+  <ol class="steps">
+    <li><strong>Verein und Bezirk</strong> – Bereiche benennen; neue Bereiche bekommen die üblichen Ämter und den Jahreskalender automatisch.</li>
+    <li><strong>Personen und Ämter</strong> – mindestens zwei Admins, damit Freigaben und Vertretung funktionieren.</li>
+    <li><strong>Fristen und Beiträge</strong> – Werte aus Satzung und Beitragsordnung; die Rechner der App benutzen sie.</li>
+    <li><strong>Datenschutz</strong> – die zwei Schalter für gelbe Daten (siehe unten).</li>
+    <li><strong>Verbindungen</strong> – Microsoft 365, Spielpläne, Claude. Alles optional.</li>
+    <li><strong>Automatisierungen</strong> – Voreinstellung <em>Vorsichtig</em>, <em>Empfohlen</em> oder <em>Umfassend</em>.</li>
+    <li><strong>Jahreskalender</strong> – geschätzte Termine korrigieren und auf einmal bestätigen.</li>
+    <li><strong>Satzung und Ordnungen</strong> – Text einfügen; „§ 5 …“ wird automatisch zur Fundstelle.</li>
+    <li><strong>Los geht’s</strong> – Asana-Import, Ablageregeln, Vorlagen prüfen.</li>
+  </ol>
+
+  <h3 id="datenschutz">Die zwei Datenschutz-Schalter</h3>
+  <div class="duo">
+    <figure><a href="bilder/app-assistent-datenschutz.jpg" target="_blank"><img src="bilder/app-assistent-datenschutz.jpg" alt="Datenschutz-Schalter" loading="lazy"></a><figcaption>Datenampel und die zwei Schalter.</figcaption></figure>
+    <figure><a href="bilder/app-assistent-automatik.jpg" target="_blank"><img src="bilder/app-assistent-automatik.jpg" alt="Voreinstellungen für Automatisierungen" loading="lazy"></a><figcaption>Drei Voreinstellungen für den Automatisierungskatalog.</figcaption></figure>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Schalter</th><th>Erlaubt</th><th>Wann einschalten</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Gelbe Daten lokal automatisch verarbeiten</strong></td><td>Regeln für gelbe Vorgänge (z. B. Willkommensmail-Entwurf bei Neuaufnahme), Prüfung des meinVerein-Exports, Löschfrist für gelbe Anhänge</td><td>Wenn der Verein es entscheidet – die Daten bleiben auf dem eigenen Server.</td></tr>
+      <tr><td><strong>Gelbe Daten an Microsoft 365 geben</strong></td><td>SharePoint-Kopie gelber Dateien, Entwürfe gelber Vorgänge ins Postfach – jeweils nach Freigabe</td><td>Erst wenn die Auftragsverarbeitung geklärt ist (Verband/Sportbund fragen).</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note tip"><strong>Gut zu wissen</strong>Der KI-Assistent bekommt unabhängig davon <em>nie</em> gelbe Daten.</div>
+</section>
+
+<!-- 4 -->
+<section id="alltag">
+  <h2><span class="num">4</span>Der Alltag in der App</h2>
+  <p class="lead">Links die Navigation, oben Suche (<kbd>/</kbd>) und „Neue Aufgabe“ (<kbd>N</kbd>), die Glocke für Benachrichtigungen.</p>
+
+  <h3 id="uebersicht">Übersicht</h3>
+  <figure><a href="bilder/app-uebersicht.jpg" target="_blank"><img src="bilder/app-uebersicht.jpg" alt="Übersicht" loading="lazy"></a>
+    <figcaption>Was überfällig ist, was dir gehört, worauf gewartet wird, was niemandem gehört, offene Freigaben und Eingänge – und die Termine der nächsten zwei Wochen.</figcaption></figure>
+  <p>Nach Änderungen an Regeln, Vorlagen oder der Wissensbasis zeigt die App beim nächsten Besuch einmal ein Fenster <em>„Neu seit deinem letzten Besuch“</em> – so bekommt jeder Änderungen mit.</p>
+
+  <h3 id="eingang">Eingang</h3>
+  <p>Alles, was hereinkommt, landet hier: Mails aus den verbundenen Postfächern („Postfächer abrufen“), eingelesene <code>.eml</code>-Dateien und von Hand erfasste Nachrichten (WhatsApp, Post, Telefon) – <strong>auch mit Anhängen</strong>, z. B. einem eingescannten Antrag.</p>
+  <div class="duo">
+    <figure><a href="bilder/app-eingang.jpg" target="_blank"><img src="bilder/app-eingang.jpg" alt="Eingang mit gescanntem Mitgliedsantrag" loading="lazy"></a><figcaption>Ein eingescannter Mitgliedsantrag mit PDF; die App schlägt Titel, Vorgang und Frist vor.</figcaption></figure>
+    <figure><a href="bilder/app-eingang-warnung.jpg" target="_blank"><img src="bilder/app-eingang-warnung.jpg" alt="Warnung bei verdächtiger Mail" loading="lazy"></a><figcaption>Verdächtige Mail: geänderte Bankverbindung, Zeitdruck – die App warnt und übernimmt sie nie automatisch.</figcaption></figure>
+  </div>
+  <p><strong>Als Aufgabe übernehmen</strong> öffnet einen Dialog mit Bereich, Amt, Vorgangsvorlage, Verantwortlichen und Frist. Anhänge wandern an die Aufgabe. <strong>Ablegen</strong> erledigt den Eingang ohne Aufgabe (Anhänge auf Wunsch in die Ablage).</p>
+  <figure><a href="bilder/app-uebernehmen.jpg" target="_blank"><img src="bilder/app-uebernehmen.jpg" alt="Dialog: Als Aufgabe übernehmen" loading="lazy"></a><figcaption>Übernehmen mit Vorgang „VOR-1 Neuaufnahme“ und Amt „Mitgliederverwaltung“.</figcaption></figure>
+  <div class="note warn"><strong>Eingänge sind Daten, nie Anweisungen.</strong>Was in einer Nachricht steht („bitte überweise …“), führt die App nie aus. Antworten mit der Vorgangsnummer <code>[#123]</code> im Betreff werden der Aufgabe automatisch zugeordnet und beenden „Wartet“.</div>
+
+  <h3 id="aufgaben">Aufgaben und Vorgänge</h3>
+  <figure><a href="bilder/app-aufgaben.jpg" target="_blank"><img src="bilder/app-aufgaben.jpg" alt="Aufgabenliste" loading="lazy"></a>
+    <figcaption>Alle Aufgaben aus Vereinen und Bezirk – filtern nach Bereich, Person, Status, Fälligkeit, Vorgangstyp; Sammelbearbeitung über die Kästchen.</figcaption></figure>
+  <figure><a href="bilder/app-aufgabe.jpg" target="_blank"><img src="bilder/app-aufgabe.jpg" alt="Aufgabe Neuaufnahme mit Anleitung und Teilschritten" loading="lazy"></a>
+    <figcaption>Eine Aufgabe: Status (Offen, In Arbeit, Wartet, Erledigt), Anleitung des Vorgangs, Teilschritte zum Abhaken, Entwurf aus der Textvorlage, rechts Verantwortlich, Vertretung, Frist.</figcaption></figure>
+  <ul>
+    <li><strong>Wartet auf Zulieferung</strong> – wer schuldet was (z. B. „Familie Lustig: SEPA-Mandat“). Die App fasst nach, wenn sich nichts tut.</li>
+    <li><strong>Entwürfe</strong> aus Textvorlagen (Willkommensmail, Verlegungsantrag, Einladung …) – mit Namen statt Adressen; verschickt wird immer von Hand.</li>
+    <li><strong>Rechner mit Rechenweg</strong> – Einladungsfrist, Kündigungsfrist, Beitragsstufe, Budget-Reserve, faire Verteilung.</li>
+    <li><strong>Zeit erfassen, kommentieren, Erfahrung festhalten</strong> – Erfahrungen landen im <em>Handbuch je Amt</em> für Nachfolger.</li>
+  </ul>
+  <figure><a href="bilder/app-vorgaenge.jpg" target="_blank"><img src="bilder/app-vorgaenge.jpg" alt="Vorgangsvorlagen" loading="lazy"></a>
+    <figcaption>Vorgangsvorlagen VOR-1 bis VOR-16: jeder Standardprozess mit Teilschritten, Höchststufe und Datenklasse. Unter „Textvorlagen“ liegen die passenden Schreiben.</figcaption></figure>
+
+  <h3 id="kalender">Kalender</h3>
+  <figure><a href="bilder/app-kalender.jpg" target="_blank"><img src="bilder/app-kalender.jpg" alt="Kalender" loading="lazy"></a>
+    <figcaption>Termine, Fristen, Jahreskalender (↻) und Spielpläne (🏠 = Heimspiel) in einer Monatsansicht.</figcaption></figure>
+  <p>Unter <strong>Jahreskalender</strong> stehen die festen Termine des Vereinsjahres; die App legt die Aufgabe jeweils mit Vorlauf an. Unter <strong>Kalender-Abo</strong> bekommt jede Person einen persönlichen Link für Outlook, Google oder das Handy.</p>
+
+  <h3 id="ablage">Ablage und Ablageregeln</h3>
+  <div class="duo">
+    <figure><a href="bilder/app-ablage.jpg" target="_blank"><img src="bilder/app-ablage.jpg" alt="Ablage mit Themen-Ordnern" loading="lazy"></a><figcaption>Ablage mit Themen-Ordnern und einheitlichen Namen „JJJJ-MM-TT – Aussteller – Anlass“.</figcaption></figure>
+    <figure><a href="bilder/app-ablageregeln.jpg" target="_blank"><img src="bilder/app-ablageregeln.jpg" alt="Ablageregeln" loading="lazy"></a><figcaption>Ablageregeln (Eingang → Regeln): Absender, Betreff, Dateiname, Dateityp → Bereich, Ordner, Datenklasse.</figcaption></figure>
+  </div>
+  <p>Jede Regel kann eine Mail <em>nur ablegen</em>, gleich eine <em>Aufgabe anlegen</em> oder den Vorschlag <em>vormerken</em>. Mit „Probelauf“ sieht man vorher, welche Regel greifen würde. Auffällige Mails werden nie automatisch einsortiert.</p>
+
+  <h3 id="auskunft">Auskunft</h3>
+  <figure><a href="bilder/app-auskunft.jpg" target="_blank"><img src="bilder/app-auskunft.jpg" alt="Auskunft mit Fundstelle" loading="lazy"></a>
+    <figcaption>„Wie lange vorher muss zur Mitgliederversammlung eingeladen werden?“ – Antwort aus der Satzung mit Fundstelle § 7.</figcaption></figure>
+  <p>Die Auskunft antwortet nur aus hinterlegten Dokumenten. Bei Widersprüchen gilt die Rangfolge Satzung → Ordnungen → Vorstandsbeschluss → Formulare → Website. Unbeantwortete Fragen landen im Lernprotokoll.</p>
+
+  <h3 id="sponsoren">Sponsoren, Kennzahlen, Protokoll</h3>
+  <figure><a href="bilder/app-sponsoren.jpg" target="_blank"><img src="bilder/app-sponsoren.jpg" alt="Sponsoren" loading="lazy"></a>
+    <figcaption>Sponsoren mit Pate, Laufzeit und letztem Kontakt. Vor dem Laufzeitende legt die App selbst eine Verlängerungsaufgabe an.</figcaption></figure>
+  <figure><a href="bilder/app-kennzahlen.jpg" target="_blank"><img src="bilder/app-kennzahlen.jpg" alt="Kennzahlen" loading="lazy"></a>
+    <figcaption>Kennzahlen: Liegezeit, Durchlaufzeit, erfasste Zeit – mit dem Asana-Stand als Vergleichswert „vorher“.</figcaption></figure>
+  <p>Das <strong>Protokoll</strong> zeigt jede Aktion von Menschen und Automatik – unveränderlich.</p>
+</section>
+
+<!-- 5 -->
+<section id="automatik">
+  <h2><span class="num">5</span>Automatisieren</h2>
+  <p class="lead">Alle Automatisierungen laufen als feste Regeln auf eurem Server – nicht in einer KI. Was nach außen wirkt, braucht immer eine Freigabe.</p>
+
+  <h3 id="stufen">Stufen und Freigaben</h3>
+  <div class="stufen">
+    <div><b>0 Auskunft</b>aus der Wissensbasis antworten</div>
+    <div><b>1 Entwurf</b>Texte und Berechnungen vorbereiten</div>
+    <div><b>2 Vorbereitung</b>Systeme lesen, Ergebnisse zusammenstellen</div>
+    <div><b>3 Ausführung nach Freigabe</b>erst nach ausdrücklichem Ja</div>
+    <div><b>4 Selbstständig</b>regelmäßig ohne Anstoß</div>
+  </div>
+  <figure><a href="bilder/app-freigaben.jpg" target="_blank"><img src="bilder/app-freigaben.jpg" alt="Freigaben" loading="lazy"></a>
+    <figcaption>Freigaben: z. B. „Datei nach SharePoint kopieren“. Ein Klick auf „Ja, ausführen“ – oder ablehnen. Mehrere lassen sich gesammelt freigeben.</figcaption></figure>
+  <div class="note ok"><strong>Technisch gesperrt:</strong>Zahlungen, Lastschriften, Bankvorgänge, Bestellungen. Mails entstehen nur als Entwurf.</div>
+
+  <h3 id="katalog">Katalog und eigene Regeln</h3>
+  <div class="duo">
+    <figure><a href="bilder/app-katalog.jpg" target="_blank"><img src="bilder/app-katalog.jpg" alt="Automatisierungskatalog im Adminpanel" loading="lazy"></a><figcaption>Adminpanel → Automatisierungen: jeder fertige Ablauf an/aus, mit Parametern (Uhrzeit, Tage …).</figcaption></figure>
+    <figure><a href="bilder/app-regeln.jpg" target="_blank"><img src="bilder/app-regeln.jpg" alt="Regeln" loading="lazy"></a><figcaption>Automatisierungen → Regeln: eigene „Wenn … dann …“-Regeln; neue laufen erst nach Freigabe.</figcaption></figure>
+  </div>
+  <p>Im Katalog u. a.: Erinnerungen und Nachfassen, Eskalation an die Vertretung, Ideen zur Entscheidung vorlegen, Jahreskalender, Spielplan-Import und Heimspiel-Aufgaben, Sponsor-Laufzeiten, Postfach-Abruf, Antworten zuordnen, Ablageregeln, Entwürfe ins Postfach, Outlook-Termine, SharePoint-Kopien, Monatsbericht, meinVerein-Prüfung, KI-Assistent.</p>
+
+  <h3 id="ki">KI-Assistent</h3>
+  <figure><a href="bilder/app-ki.jpg" target="_blank"><img src="bilder/app-ki.jpg" alt="Mit KI erstellen" loading="lazy"></a>
+    <figcaption>Automatisierungen → Mit KI erstellen: in eigenen Worten beschreiben, Claude schlägt Regeln oder Katalog-Einstellungen vor.</figcaption></figure>
+  <p>Claude bekommt nur grüne Daten und keine Werkzeuge. Jeder Vorschlag wird von der App gegen Sperrliste und Höchststufen geprüft; übernommen wird nur, was ein Admin anklickt – und neue Regeln brauchen danach wie immer eine Freigabe. Der API-Schlüssel steht nur in der <code>.env</code>.</p>
+
+  <h3 id="verbindungen">Verbindungen</h3>
+  <figure><a href="bilder/app-verbindungen.jpg" target="_blank"><img src="bilder/app-verbindungen.jpg" alt="Verbindungen" loading="lazy"></a>
+    <figcaption>Adminpanel → Verbindungen: Microsoft-365-Postfächer, Kalender-Postfach, Ablageort; rechts die Spielplan-Abos.</figcaption></figure>
+  <ul>
+    <li><strong>Microsoft 365</strong> – App-Registrierung ohne Mail-Versand-Recht; Zugangsdaten nur in der <code>.env</code>. Anleitung: <code>docs/MICROSOFT-365.md</code>.</li>
+    <li><strong>Spielpläne</strong> – den Kalender-Export (iCal) je Mannschaft aus click-TT/nuLiga eintragen, Heimspiel-Erkennung mit dem Vereinsnamen.</li>
+    <li><strong>Claude</strong> – <code>ANTHROPIC_API_KEY</code> in der <code>.env</code>, Katalog „KI-Assistent“ einschalten.</li>
+  </ul>
+</section>
+
+<!-- 6 -->
+<section id="simulator">
+  <h2><span class="num">6</span>Der Vorstandsarbeit-Simulator</h2>
+  <p class="lead">Eine erfundene Vereinswelt und daneben eine leere App. Du führst die App ein, als würdet ihr sie neu im Verein starten – und bewältigst danach im Zeitraffer typische Vereinsprobleme.</p>
+<pre><code>npm.cmd run simulator          # Vereinswelt :3002, App :3004
+npm.cmd run simulator -- --neu # alles von vorn</code></pre>
+  <div class="note tip"><strong>Nur Fantasiedaten</strong>Alle Namen und Adressen sind erfunden (Endung <code>.example</code>). Microsoft 365, click-TT und Claude sind lokal nachgebaut – nichts verlässt den Rechner. Deshalb darf man dort auch beide Datenschutz-Schalter einschalten.</div>
+
+  <h3 id="welt">Die Vereinswelt</h3>
+  <figure><a href="bilder/welt-start.jpg" target="_blank"><img src="bilder/welt-start.jpg" alt="Vereinswelt Startseite" loading="lazy"></a>
+    <figcaption>Startseite: Du bist Mia Muster, Vorsitzende des TTV Musterhausen. Oben Datum und Zeitraffer, rechts der Weg zur App.</figcaption></figure>
+  <div class="cards">
+    <div class="card"><span class="ico">✉️</span><h4>Postfächer</h4><p>Vorstand, SV Beispieldorf, Bezirk – mit alten Mails, Entwürfen der App und „Gesendet“.</p></div>
+    <div class="card"><span class="ico">📬</span><h4>Briefkasten</h4><p>Papierpost als echte PDFs – einscannen und ans Postfach mailen oder herunterladen.</p></div>
+    <div class="card"><span class="ico">💬</span><h4>WhatsApp</h4><p>Vorstand, Helfer &amp; Fest, Eltern Jugend – mit Fotos.</p></div>
+    <div class="card"><span class="ico">🗂️</span><h4>Vereinsordner</h4><p>Satzung, Beitragsordnung, Ämterliste, Jahresplan, Sponsoren, Asana- und meinVerein-Export, Protokoll.</p></div>
+    <div class="card"><span class="ico">🏓</span><h4>click-TT</h4><p>Drei Mannschaften mit Kalender-Adresse zum Abonnieren.</p></div>
+    <div class="card"><span class="ico">☁️</span><h4>Microsoft 365</h4><p>Was in der App einzutragen ist – und was die App im Tenant getan hat.</p></div>
+  </div>
+  <div class="duo">
+    <figure><a href="bilder/welt-ordner.jpg" target="_blank"><img src="bilder/welt-ordner.jpg" alt="Vereinsordner" loading="lazy"></a><figcaption>Vereinsordner: alles für die Einrichtung, mit „Text kopieren“.</figcaption></figure>
+    <figure><a href="bilder/welt-postfach.jpg" target="_blank"><img src="bilder/welt-postfach.jpg" alt="Postfach" loading="lazy"></a><figcaption>Postfach wie Outlook: lesen, antworten, als .eml herunterladen.</figcaption></figure>
+    <figure><a href="bilder/welt-whatsapp.jpg" target="_blank"><img src="bilder/welt-whatsapp.jpg" alt="WhatsApp-Gruppen" loading="lazy"></a><figcaption>WhatsApp: Text kopieren und in der App „Eingang erfassen“.</figcaption></figure>
+    <figure><a href="bilder/welt-clicktt.jpg" target="_blank"><img src="bilder/welt-clicktt.jpg" alt="click-TT" loading="lazy"></a><figcaption>click-TT: ICS-Adresse kopieren und in der App abonnieren.</figcaption></figure>
+  </div>
+  <figure><a href="bilder/welt-m365.jpg" target="_blank"><img src="bilder/welt-m365.jpg" alt="Microsoft 365 der Vereinswelt" loading="lazy"></a>
+    <figcaption>Microsoft 365: Die Zugangsdaten setzt der Simulator selbst – in der App nur die Postfächer eintragen.</figcaption></figure>
+
+  <h3>Kapitel 1: die App einrichten</h3>
+  <p>16 Prüfpunkte, die sich automatisch abhaken, sobald die App den richtigen Stand hat – geprüft gegen die Unterlagen des Vereins. Ein Stolperstein ist eingebaut: Die Beiträge (48 €/96 €) weichen von der Voreinstellung der App ab.</p>
+  <figure><a href="bilder/welt-kapitel1.jpg" target="_blank"><img src="bilder/welt-kapitel1.jpg" alt="Kapitel 1 vollständig" loading="lazy"></a><figcaption>Kapitel 1 vollständig: Bereiche, Konten, Ämter, Fristen, Beiträge, Satzung, Postfach, Spielpläne, Asana, Kalender, Sponsoren …</figcaption></figure>
+
+  <h3 id="durchlauf">Beispiel: der Mitgliedsantrag</h3>
+  <ol class="steps">
+    <li><strong>Tag 1 – Post im Briefkasten.</strong> Familie Lustig wirft den ausgefüllten Antrag für Lea (12) ein. Das SEPA-Mandat fehlt, das Foto-Häkchen ist nicht gesetzt.
+      <figure><a href="bilder/welt-briefkasten.jpg" target="_blank"><img src="bilder/welt-briefkasten.jpg" alt="Briefkasten mit Mitgliedsantrag" loading="lazy"></a></figure></li>
+    <li><strong>Einscannen.</strong> „Scannen und ans Vorstandspostfach“ – der Antrag liegt als Mail mit PDF im Postfach.</li>
+    <li><strong>In die App holen.</strong> Eingang → „Postfächer abrufen“. (Ohne Verbindung: PDF herunterladen und „Eingang erfassen“ mit Anhang.)</li>
+    <li><strong>Übernehmen</strong> mit Vorgang VOR-1 „Neuaufnahme“, Amt Mitgliederverwaltung, Datenklasse gelb.</li>
+    <li><strong>Bearbeiten.</strong> Antrag prüfen, Status „Wartet“ – auf Familie Lustig: SEPA-Mandat. Kommentar zur fehlenden Foto-Einwilligung. Die Willkommensmail liegt per Regel als Entwurf bereit.</li>
+    <li><strong>Drei Tage später</strong> mailt die Familie das Mandat mit der Vorgangsnummer im Betreff – die App ordnet es zu und beendet „Wartet“.</li>
+    <li><strong>Abschließen.</strong> In der Vereinswelt sind alle Prüfpunkte grün.</li>
+  </ol>
+
+  <h3 id="ereignisse">Kapitel 2: Vereinsalltag</h3>
+  <p>17 Ereignisse aus typischen Problemen von Sportvereinen. Mit „Saisonverlauf“ treten sie an ihrem Tag von selbst ein; jedes lässt sich auch sofort auslösen. Bei jedem laufenden Ereignis stehen Tipps.</p>
+  <figure><a href="bilder/welt-ereignisse.jpg" target="_blank"><img src="bilder/welt-ereignisse.jpg" alt="Laufende Ereignisse mit Prüfpunkten" loading="lazy"></a><figcaption>Laufende Ereignisse mit Prüfpunkten – grün, sobald die App den richtigen Stand hat.</figcaption></figure>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Tag</th><th>Ereignis</th><th>Kommt über</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Mitgliedsantrag ohne SEPA-Mandat</td><td>Briefkasten</td></tr>
+      <tr><td>3</td><td>Schiedsrichter sagt kurzfristig ab</td><td>Postfach Bezirk</td></tr>
+      <tr><td>4</td><td>Fördermittel: Antragsfrist</td><td>Postfach</td></tr>
+      <tr><td>5</td><td>Neue Bankverbindung per Mail (Betrugsversuch)</td><td>Postfach, WhatsApp</td></tr>
+      <tr><td>6</td><td>Halle gesperrt – Heimspiel verlegen</td><td>Postfach, click-TT</td></tr>
+      <tr><td>7</td><td>Ideen aus der Versammlung entscheiden</td><td>Postfach</td></tr>
+      <tr><td>8</td><td>Helfermangel am Heimspieltag</td><td>WhatsApp</td></tr>
+      <tr><td>9</td><td>Fotos vom Jugendturnier ohne Einwilligung</td><td>WhatsApp</td></tr>
+      <tr><td>10</td><td>Mitgliederversammlung fristgerecht einladen</td><td>Postfach</td></tr>
+      <tr><td>11</td><td>Fahrdienst zum Ranglistenturnier</td><td>Postfach, WhatsApp</td></tr>
+      <tr><td>12</td><td>Sponsorvertrag läuft aus</td><td>Postfach</td></tr>
+      <tr><td>13</td><td>Auskunft nach Art. 15 DSGVO</td><td>Postfach</td></tr>
+      <tr><td>14</td><td>Kündigung kurz vor Jahresende</td><td>Postfach</td></tr>
+      <tr><td>15</td><td>Kassenprüfung: Belege zusammensuchen</td><td>Postfach</td></tr>
+      <tr><td>16</td><td>Alles hängt an der Vorsitzenden</td><td>Postfach, WhatsApp</td></tr>
+      <tr><td>18</td><td>Beitragsstufen zum Jahreswechsel prüfen</td><td>Postfach, Vereinsordner</td></tr>
+      <tr><td>20</td><td>Kassenwart hört auf</td><td>Postfach</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>Zeitraffer:</strong> „+1 Tag“, „+3 Tage“, „+1 Woche“. Je Tag läuft der normale Tageslauf der App (Erinnerungen, Jahreskalender, Regeln, Postfach- und Spielplan-Abruf), dann reagiert die Welt – z. B. genehmigt die Staffelleitung eine Verlegung, und der neue Termin kommt am Folgetag über das Spielplan-Abo. Zurückspulen gibt es nicht; dafür <code>--neu</code>.</p>
+</section>
+
+<!-- 7 -->
+<section id="tipps">
+  <h2><span class="num">7</span>Tipps und Hilfe</h2>
+  <div class="cards">
+    <div class="card"><h4>⌨️ Tastenkürzel</h4><p><kbd>N</kbd> neue Aufgabe · <kbd>/</kbd> Suche</p></div>
+    <div class="card"><h4>💾 Sicherung</h4><p><code>npm run backup</code> legt Datenbank und Ablage nach <code>backups/</code>.</p></div>
+    <div class="card"><h4>🔑 Passwort vergessen</h4><p>Ein anderer Admin vergibt ein neues. Notfall: <code>npm run passwort-zuruecksetzen -- &lt;anmeldename&gt;</code></p></div>
+    <div class="card"><h4>🌙 Hell/Dunkel</h4><p>Symbol unten links neben dem eigenen Namen.</p></div>
+    <div class="card"><h4>❓ Hilfe in der App</h4><p>„Hilfe und FAQ“ mit Grundsätzen, Tastenkürzeln und Änderungsverlauf.</p></div>
+    <div class="card"><h4>📄 Weitere Dokumente</h4><p><code>docs/</code>: BEDIENUNG, EINRICHTUNG, SIMULATOR, MICROSOFT-365, KI, BETRIEB, ARCHITEKTUR.</p></div>
+  </div>
+  <h3>Häufige Fragen</h3>
+  <p><strong>Schickt die App Mails ab?</strong> Nein. Sie legt höchstens nach Freigabe einen Entwurf ins Postfach; verschickt wird in Outlook von einem Menschen.</p>
+  <p><strong>Was sieht eine Zuarbeit-Person?</strong> Nur die Bereiche, die ihr zugeordnet sind. Entzug wirkt sofort.</p>
+  <p><strong>Kann ich Asana weiterbenutzen?</strong> Für den Umstieg einmal importieren (Adminpanel → Asana-Import); erledigte Aufgaben dienen als Vergleich in den Kennzahlen.</p>
+  <p><strong>Wo sind meine Daten?</strong> In <code>data/</code> auf eurem Server. Simulator, Demo und leere App haben eigene Ordner und berühren <code>data/</code> nicht.</p>
+</section>
+
+</main>
+</div>
+<footer>Ehrenamt-App · Anleitung · Screenshots aus dem Vorstandsarbeit-Simulator (alle Daten erfunden)</footer>
+</body>
+</html>
