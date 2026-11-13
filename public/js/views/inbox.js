@@ -110,10 +110,19 @@ export default async function inbox(el, { query = {} }) {
     const subject = input({ placeholder: 'Worum geht es?' });
     const body = textarea({ rows: 6, placeholder: 'Nachricht einfügen' });
     const area = select(areaOptions('Bereich erkennen lassen'), '');
+    const files = h('input', { type: 'file', multiple: true });
+    // Anhänge (z. B. eingescannter Antrag, Fotos aus WhatsApp) als Base64 mitschicken
+    const readFiles = () => Promise.all([...files.files].map(f => new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res({ name: f.name, mime: f.type || 'application/octet-stream', data: String(r.result).split(',')[1] || '' });
+      r.onerror = () => rej(new Error(`Datei „${f.name}“ konnte nicht gelesen werden.`));
+      r.readAsDataURL(f);
+    })));
     const ok = await modal({ title: 'Eingang erfassen', wide: true, body: h('div', { class: 'form-grid' },
       field('Kanal', channel), field('Bereich', area), field('Von', sender, 'Nur den Namen. Nummern und Adressen werden nicht gespeichert.'), field('Betreff', subject),
-      h('div', { class: 'span-2' }, field('Text', body))),
-      actions: [{ label: 'Abbrechen', kind: 'ghost' }, { label: 'Erfassen', kind: 'primary', onClick: () => api.post('/api/inbox', { channel: channel.value, sender: sender.value, subject: subject.value, body: body.value, area_id: area.value ? Number(area.value) : null }) }] });
+      h('div', { class: 'span-2' }, field('Text', body)),
+      h('div', { class: 'span-2' }, field('Anhänge (optional)', files, 'Z. B. eingescannter Antrag oder Fotos. Zusammen höchstens etwa 1,5 MB.'))),
+      actions: [{ label: 'Abbrechen', kind: 'ghost' }, { label: 'Erfassen', kind: 'primary', onClick: async () => api.post('/api/inbox', { channel: channel.value, sender: sender.value, subject: subject.value, body: body.value, area_id: area.value ? Number(area.value) : null, attachments: await readFiles() }) }] });
     if (ok) { if (ok.flags?.length) toast('Erfasst – mit Auffälligkeiten, bitte prüfen', 'warn'); else toast('Erfasst'); tab = 'neu'; render(); }
   };
 

@@ -1,71 +1,69 @@
-// Vorstandsarbeit-Simulator: eine eigene App-Instanz mit erfundenem Demo-Verein, nachgebauten
-// Diensten (Microsoft 365, click-TT, Claude) und Szenarien aus typischen Vereinsproblemen.
-// Eigenes Datenverzeichnis (data-simulator/), die echten Daten in data/ bleiben unberührt.
+// Vorstandsarbeit-Simulator: eine virtuelle Vereinswelt und daneben eine LEERE App.
 //
-//   npm run simulator                  → http://localhost:3002
-//   npm run simulator -- --neu         → Simulator ganz von vorn (data-simulator/ wird geleert)
-//   npm run simulator -- --echte-ki    → echten Claude nutzen (ANTHROPIC_API_KEY aus der .env; nur Fantasiedaten)
+//   Vereinswelt  http://localhost:3002   Postfächer, Briefkasten, WhatsApp, Vereinsordner, click-TT, Ereignisse
+//   App          http://localhost:3004   startet leer – du richtest sie für den Verein ein, als ob ihr sie neu einführt
 //
-// Zugänge: data-simulator/SIMULATOR-ZUGANG.txt
+//   npm run simulator                 Stand fortsetzen
+//   npm run simulator -- --neu        alles von vorn (data-simulator/ wird geleert)
+//   npm run simulator -- --echte-ki   echten Claude statt Nachbau (ANTHROPIC_API_KEY aus der .env; nur grüne Fantasiedaten)
+//
+// Alles liegt in data-simulator/ (App-Datenbank und Welt getrennt). Die echten Daten in data/ bleiben unberührt.
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-process.env.DATA_DIR ||= 'data-simulator';
-process.env.PORT ||= '3002';
-process.env.TTE_SIMULATOR = '1';
-const { config } = await import('../server/config.js');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const WELT_PORT = Number(process.env.WELT_PORT || 3002);
+const APP_PORT = Number(process.env.APP_PORT || 3004);
+const simDir = path.join(root, 'data-simulator');
 
 if (process.argv.includes('--neu')) {
-  if (path.basename(config.dataDir) !== 'data-simulator') { console.error('Abbruch: --neu nur für data-simulator.'); process.exit(1); }
-  fs.rmSync(config.dataDir, { recursive: true, force: true });
-  console.log('data-simulator/ geleert.');
+  fs.rmSync(simDir, { recursive: true, force: true });
+  console.log('data-simulator/ geleert – die Vereinswelt beginnt von vorn.');
 }
 
-const realClaude = process.argv.includes('--echte-ki') && !!process.env.ANTHROPIC_API_KEY;
-const { q } = await import('../server/db.js');
-const { startFakes, fakeBase } = await import('../server/sim/fakes.js');
-await startFakes({ realClaude });
-const { SIM_AREAS, seedWorld, SATZUNG, BEITRAGSORDNUNG } = await import('../server/sim/world.js');
+process.env.DATA_DIR = path.join(simDir, 'app');
+process.env.PORT = String(APP_PORT);
+process.env.TTE_SIMULATOR = '1';
+process.env.TTE_LEER = '1';
+process.env.TTE_WELT_URL = `http://localhost:${WELT_PORT}`;
+const echteKi = process.argv.includes('--echte-ki');
+
+// Nachbau-Dienste VOR dem Laden der App-Konfiguration eintragen (die .env überschreibt gesetzte Werte nicht)
+const { dienstEnv } = await import('../simulator/welt/dienste.js');
+dienstEnv(`http://127.0.0.1:${WELT_PORT}`, { echteKi });
+const { config } = await import('../server/config.js');
+if (echteKi && !process.env.ANTHROPIC_API_KEY) console.warn('Hinweis: --echte-ki, aber kein ANTHROPIC_API_KEY in der .env – der KI-Bereich bleibt gesperrt.');
+
+const { openWelt, W, save } = await import('../simulator/welt/zustand.js');
+const { erschaffen, history } = await import('../simulator/welt/verein.js');
+const { mail } = await import('../simulator/welt/kanaele.js');
+const { restoreClock } = await import('../simulator/welt/motor.js');
+const { createWeltServer } = await import('../simulator/welt/server.js');
 const { createServer } = await import('../server/index.js');
-await import('../server/sim/api.js');
-const { restoreClock } = await import('../server/sim/engine.js');
 const { startScheduler } = await import('../server/services/scheduler.js');
-const { resetTokenCache } = await import('../server/connectors/m365.js');
 
-const server = createServer({ areas: SIM_AREAS });
+const neu = !openWelt(path.join(simDir, 'welt'));
+if (neu) {
+  erschaffen();
+  history((mb, m) => mail(mb, { ...m, attachments: m.attachments || [] }));
+  save(true);
+}
 restoreClock();
-resetTokenCache();
-// Der Nachbau-Server bekommt bei jedem Start einen neuen Port: Spielplan-Abos nachziehen
-q.run(`UPDATE feeds SET url = ? || substr(url, instr(url, '/ics/')) WHERE url LIKE 'http://127.0.0.1:%/ics/%'`, fakeBase());
 
-const zugang = path.join(config.dataDir, 'SIMULATOR-ZUGANG.txt');
-const created = seedWorld({ fakeBase: fakeBase() });
-
-server.listen(config.port, config.host, async () => {
-  const base = `http://127.0.0.1:${config.port}`;
-  if (created) {
-    // Satzung und Beitragsordnung über die normale Schnittstelle aufnehmen (Abschnitte, Änderungsprotokoll)
-    const login = await fetch(`${base}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'tte' }, body: JSON.stringify({ login: 'mia', password: created.pw }) });
-    const cookie = login.headers.get('set-cookie')?.split(';')[0];
-    const ttv = q.get(`SELECT id FROM areas WHERE key = 'ttv-musterhausen'`).id;
-    for (const [title, source_type, text] of [['Satzung TTV Musterhausen', 'satzung', SATZUNG], ['Beitragsordnung TTV Musterhausen', 'ordnung', BEITRAGSORDNUNG]]) {
-      await fetch(`${base}/api/kb/documents`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'tte', Cookie: cookie }, body: JSON.stringify({ title, source_type, area_id: ttv, text }) });
-    }
-    await fetch(`${base}/api/auth/logout`, { method: 'POST', headers: { 'X-Requested-With': 'tte', Cookie: cookie } });
-    fs.writeFileSync(zugang, [
-      'Vorstandsarbeit-Simulator – Zugänge (nur Fantasiedaten, nur für data-simulator)', '',
-      `Passwort für alle: ${created.pw}`, '',
-      'mia   Mia Muster    Admin     Vorsitzende TTV Musterhausen',
-      'ben   Ben Beispiel  Admin     Kassenwart TTV, Abteilungsleiter SV Beispieldorf',
-      'tom   Tom Turnier   Admin     Bezirkssportwart, Schiedsrichterwart',
-      'jana  Jana Jugend   Zuarbeit  Jugendwartin TTV',
-      'paul  Paul Presse   Zuarbeit  Öffentlichkeitsarbeit TTV', '',
-    ].join('\n'));
-    console.log('Demo-Verein angelegt.');
-  }
-  console.log(`Vorstandsarbeit-Simulator läuft auf http://localhost:${config.port}`);
-  console.log(`Zugänge: ${zugang}`);
-  console.log(`Nachbau-Dienste (Microsoft 365, click-TT${realClaude ? '' : ', Claude'}): ${fakeBase()}`);
+const app = createServer();
+const welt = createWeltServer({ appUrl: `http://localhost:${APP_PORT}`, base: `http://localhost:${WELT_PORT}` });
+welt.listen(WELT_PORT, '127.0.0.1', () => {
+  app.listen(APP_PORT, config.host, () => {
+    console.log('');
+    console.log(`  Vereinswelt (TTV Musterhausen):  http://localhost:${WELT_PORT}`);
+    console.log(`  Ehrenamt-App (startet leer):     http://localhost:${APP_PORT}`);
+    console.log('');
+    console.log(neu ? '  Neue Welt angelegt. Öffne die Vereinswelt und beginne mit Kapitel 1.' : `  Weiter an Tag ${Math.round((Date.parse(new Date(Date.now() + (W().offset || 0)).toISOString().slice(0, 10)) - Date.parse(W().start)) / 86_400_000)} der Simulation.`);
+  });
 });
 startScheduler();
+const stop = () => { save(true); process.exit(0); };
+process.on('SIGINT', stop);
+process.on('SIGTERM', stop);

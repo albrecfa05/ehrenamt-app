@@ -143,5 +143,6 @@ Datenklasse, zugeordneten Textvorlagen und Rechnern angelegt. Neue Vorgangstypen
 | KI schlägt auch Ablageregeln vor | Kap. 6 | Automatisierungen → Mit KI erstellen |
 | Leere App und Einrichtungsassistent: neun Schritte mit echtem Stand aus den Daten, Voreinstellungen „Vorsichtig/Empfohlen/Umfassend“, Kalender auf einmal bestätigen | Kap. 8 (Einführung), ROL-3 | `npm run leer`; Navigation „Einrichtung“; `test/setup.test.js` |
 | Zwei Datenschutz-Schalter: gelbe Daten lokal automatisch verarbeiten / gelbe Daten an Microsoft 365 geben (KI bekommt nie gelbe Daten) | DAT-2, DAT-4, DAT-6 | Adminpanel → Einstellungen; Assistent Schritt „Datenschutz“ |
-| Vorstandsarbeit-Simulator: Demo-Verein mit Fantasiedaten, Nachbau von Microsoft 365, click-TT und Claude, Zeitraffer, 16 Szenarien mit Selbstprüfung | Kap. 8 (Schulung), 9 (Abnahme) | `npm run simulator`; `test/simulator.test.js` |
+| Vorstandsarbeit-Simulator: eigenständige Vereinswelt (Postfächer, Briefkasten, WhatsApp, Vereinsordner, click-TT, Microsoft 365) neben einer leeren App; Kapitel 1 Einrichtung, Kapitel 2 mit 17 Ereignissen, Zeitraffer, Selbstprüfung | Kap. 8 (Einführung, Schulung), 9 (Abnahme) | `npm run simulator`; `test/simulator.test.js` |
+| Eingang erfassen mit Anhängen (eingescannte Post, Fotos aus Messengern) | ABL-1, AUT-4 | Eingang → Eingang erfassen |
 | Zentrale Uhr (Zeitraffer im Simulator; in der echten App immer Echtzeit) | – | `server/clock.js` |

@@ -30,6 +30,11 @@ post('/api/inbox', ({ user, body }) => {
     body: str(body.body, { max: 100_000 }),
     area_id: int(body.area_id),
     received_at: body.received_at || null,
+    // Anhänge bei manueller Erfassung (eingescannte Post, Fotos aus WhatsApp)
+    attachments: (Array.isArray(body.attachments) ? body.attachments : []).slice(0, 10).map(a => ({
+      name: str(a.name, { required: true, max: 200, name: 'Dateiname' }), mime: str(a.mime, { max: 100 }) || 'application/octet-stream',
+      data: Buffer.from(String(a.data || ''), 'base64'),
+    })).filter(a => a.data.length),
   };
   if (!d.subject && !d.body) throw bad('Bitte Betreff oder Text angeben.');
   if (d.area_id) assertArea(user, d.area_id);

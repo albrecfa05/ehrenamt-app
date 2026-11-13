@@ -85,7 +85,7 @@ get('/api/me', ({ user }) => {
   const unseen = q.all('SELECT * FROM changelog WHERE id > ? ORDER BY id DESC LIMIT 30', user.seen_changelog_id);
   const approvals = user.role === 'admin' ? q.get(`SELECT COUNT(*) AS n FROM approvals WHERE status = 'offen'`).n : 0;
   const inbox = q.get(`SELECT COUNT(*) AS n FROM inbox WHERE status = 'neu'`).n;
-  return { user: publicUser(user), areas, unread, unseenChangelog: unseen, counts: { approvals, inbox }, clock_offset: clockOffset(), simulator: process.env.TTE_SIMULATOR === '1',
+  return { user: publicUser(user), areas, unread, unseenChangelog: unseen, counts: { approvals, inbox }, clock_offset: clockOffset(), simulator: process.env.TTE_SIMULATOR === '1', welt_url: process.env.TTE_SIMULATOR === '1' ? (process.env.TTE_WELT_URL || null) : null,
     setup_open: user.role === 'admin' && getSetting('einrichtung', null)?.done === false };
 });
 

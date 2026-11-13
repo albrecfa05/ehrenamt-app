@@ -25,7 +25,6 @@ import help from './views/help.js';
 import search from './views/search.js';
 import sponsors from './views/sponsors.js';
 import setup from './views/setup.js';
-import simulator from './views/simulator.js';
 
 const ROUTES = [
   ['start', dashboard], ['aufgaben', tasks], ['ideen', (el, p) => tasks(el, { ...p, ideas: true })], ['aufgabe/:id', task],
@@ -34,7 +33,7 @@ const ROUTES = [
   ['ablage', files], ['auskunft', knowledge], ['auskunft/:tab', knowledge], ['handbuch', handbook],
   ['automatisierung', automation], ['automatisierung/:tab', automation], ['kennzahlen', metrics], ['protokoll', auditView],
   ['admin', admin], ['admin/:tab', admin], ['sponsoren', sponsors], ['konto', account], ['hilfe', help], ['hilfe/:tab', help], ['suche', search],
-  ['einrichtung', setup], ['simulator', simulator],
+  ['einrichtung', setup],
 ];
 
 const NAV = [
@@ -176,7 +175,6 @@ function renderNav() {
   };
   const groups = NAV.map(([title, items]) => h('div', { class: 'nav-group' }, h('div', { class: 'nav-title' }, title), items.map(link)));
   const bottom = h('div', { class: 'nav-group nav-bottom' },
-    state.me.simulator ? link(['simulator', 'Simulator', 'play']) : null,
     state.me.setup_open ? link(['einrichtung', 'Einrichtung', 'check']) : null,
     isAdmin() ? link(['admin', 'Adminpanel', 'settings']) : null,
     link(['hilfe', 'Hilfe und FAQ', 'help']),
@@ -195,7 +193,7 @@ function drawSimBanner() {
   const d = new Date(nowMs());
   clear(simBanner, icon('play', 14), h('strong', {}, 'Vorstandsarbeit-Simulator'),
     h('span', {}, ` · Fantasiedaten · simulierter Tag: ${d.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`),
-    h('a', { href: '#/simulator' }, 'Zur Steuerung →'));
+    state.me.welt_url ? h('a', { href: state.me.welt_url, target: 'vereinswelt' }, 'Zur Vereinswelt →') : null);
 }
 export { drawSimBanner };
 

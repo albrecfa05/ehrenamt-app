@@ -64,9 +64,10 @@ erst nach geklärter Auftragsverarbeitung). Der KI-Assistent bekommt nie gelbe D
 
 ## Ausprobieren ohne echte Daten
 
-Im **Vorstandsarbeit-Simulator** (`npm run simulator`) gibt es einen erfundenen Verein, einen Zeitraffer
-und Übungsszenarien wie „Schiedsrichter sagt ab“ oder „Neue Bankverbindung per Mail“. Gut für
-Schulungen neuer Amtsträger. Mehr in [SIMULATOR.md](SIMULATOR.md).
+Im **Vorstandsarbeit-Simulator** (`npm run simulator`) gibt es einen erfundenen Verein mit Postfächern,
+Briefkasten, WhatsApp-Gruppen und Vereinsordner – und eine leere App, die man damit einrichtet und im
+Zeitraffer durch den Vereinsalltag führt (Mitgliedsantrag, Schiedsrichter-Absage, Betrugsmail, Kassenprüfung …).
+Gut zum Ausprobieren und für Schulungen neuer Amtsträger. Mehr in [SIMULATOR.md](SIMULATOR.md).
 
 ## Übergabe eines Amts
 

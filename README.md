@@ -45,30 +45,24 @@ Platzhalter-Bereich „Mein Verein“), um die Ersteinrichtung mit dem Assistent
 npm run simulator
 ```
 
-Eine eigene Instanz auf http://localhost:3002 mit einem **erfundenen Demo-Verein**
-(TTV Musterhausen, SV Beispieldorf, Bezirk Musterkreis), nachgebauten Diensten (Microsoft 365,
-click-TT, Claude), **Zeitraffer** und **16 Szenarien** aus typischen Vereinsproblemen.
-Weil nur Fantasiedaten im Spiel sind, sind dort alle Datenschutz-Schalter und Automatisierungen an.
-Zugänge in `data-simulator/SIMULATOR-ZUGANG.txt`. Details: [docs/SIMULATOR.md](docs/SIMULATOR.md).
-
-### Erst einmal ausprobieren (Demo)
-
-```bash
-npm run demo
-```
-
-Die Demo startet auf http://localhost:3001 mit Beispieldaten in einem eigenen Ordner
-`data-demo/`. Die echten Daten in `data/` bleiben unberührt. Die Zugänge stehen in
-`data-demo/DEMO-ZUGANG.txt`. Zum Zurücksetzen der Demo den Ordner `data-demo/` löschen.
+Startet eine **virtuelle Vereinswelt** (http://localhost:3002) und daneben eine **leere App**
+(http://localhost:3004). Der erfundene TTV Musterhausen hat Postfächer mit alten Mails, einen Briefkasten
+(z. B. ein ausgefüllter Mitgliedsantrag als PDF), WhatsApp-Gruppen, einen Vereinsordner mit Satzung,
+Ämterliste, Asana- und meinVerein-Export sowie click-TT-Spielpläne. Du richtest die App damit ein
+(Kapitel 1) und bewältigst danach mit Zeitraffer den Vereinsalltag (Kapitel 2, 17 Ereignisse aus
+typischen Vereinsproblemen). Details: [docs/SIMULATOR.md](docs/SIMULATOR.md).
 
 ### Weitere Befehle
+
+Unter Windows-PowerShell meldet `npm` evtl. „Ausführung von Skripts deaktiviert“ – dann `npm.cmd` statt `npm` schreiben
+(z. B. `npm.cmd run simulator`) oder die Eingabeaufforderung (`cmd`) nutzen.
 
 | Befehl | Zweck |
 | --- | --- |
 | `npm start` | App starten (Port 3000) |
 | `npm run dev` | Start mit automatischem Neustart bei Codeänderungen |
 | `npm run demo` | Demo mit Beispieldaten (Port 3001, eigener Datenordner) |
-| `npm run simulator` | Vorstandsarbeit-Simulator (Port 3002); `-- --neu` setzt zurück, `-- --echte-ki` nutzt den echten Claude |
+| `npm run simulator` | Vereinswelt (Port 3002) und leere App (Port 3004); `-- --neu` setzt zurück, `-- --echte-ki` nutzt den echten Claude |
 | `npm run leer` | Leere App für die Ersteinrichtung (Port 3003); `-- --neu` setzt zurück |
 | `npm test` | Automatische Tests, u. a. der Abnahmekriterien ABN-5 bis ABN-7 |
 | `npm run backup` | Sicherung von Datenbank und Ablage nach `backups/` |

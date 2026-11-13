@@ -45,8 +45,6 @@ server/
     ki.js           KI-Assistent: Kontext (nur grüne Daten), Antwortformat, Prüfung, Übernahme
     scheduler.js    Minütlicher Takt: ruft alle Abläufe auf, jeder prüft selbst, ob er eingeschaltet ist
   api/              Schnittstellen je Fachgebiet (registrieren sich beim Import selbst); setup.js = Einrichtungsassistent
-  sim/              Nur im Simulator geladen: fakes.js (Nachbau Graph/ICS/Claude), world.js (Demo-Verein),
-                    scenarios.js (Szenarien mit Prüfungen), engine.js (Zeitraffer, Auswertung), api.js (/api/sim)
 public/
   index.html, css/app.css
   js/app.js         Anmeldung, Grundgerüst, Router (#/pfad)
@@ -54,6 +52,8 @@ public/
   js/ui.js          DOM-Helfer h(), Dialoge, Formate, Abzeichen, Icons
   js/state.js       Gemeinsame Stammdaten im Browser
   js/views/*.js     Eine Datei je Seite
+simulator/          Vorstandsarbeit-Simulator: eigenständige Vereinswelt (welt/*.js, public/) mit Nachbau von
+                    Microsoft Graph, click-TT und Claude; liest die App-Datenbank nur zum Abhaken (docs/SIMULATOR.md)
 scripts/            demo.js, leer.js, simulator.js, backup.js, reset-password.js
 test/               Automatische Tests (node --test)
 data/               Laufzeitdaten: ehrenamt.sqlite und ablage/ (nicht ins Versionsarchiv!)
