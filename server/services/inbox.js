@@ -11,6 +11,7 @@ import { isOn, param } from './catalog.js';
 import { saveInboxAttachments, removeInboxAttachments } from './files.js';
 import { applyRules, evaluate, fileAttachments } from './filing.js';
 import * as m365 from '../connectors/m365.js';
+import { clockNow, nowMs } from '../clock.js';
 
 // Schlüsselwörter → Vorgangsvorlage (key aus seed.js)
 const TEMPLATE_HINTS = [
@@ -40,7 +41,10 @@ export function suggest({ subject, body, area_id }) {
     areaId = hits[0]?.id || null;
     areaSure = hits.length === 1;
   }
-  const keys = [...new Set(TEMPLATE_HINTS.filter(([re]) => re.test(text)).map(([, k]) => k))];
+  // Nur Vorlagen, die zum Bereich passen (Vereins- vs. Bezirksvorlage)
+  const areaType = areaId ? q.get('SELECT type FROM areas WHERE id = ?', areaId)?.type : null;
+  const fits = (k) => { const t = q.get('SELECT scope FROM process_templates WHERE key = ? AND active = 1', k); return t && (!areaType || t.scope === 'beide' || t.scope === areaType); };
+  const keys = [...new Set(TEMPLATE_HINTS.filter(([re]) => re.test(text)).map(([, k]) => k))].filter(fits);
   const tpl = keys[0] ? q.get('SELECT id, name FROM process_templates WHERE key = ? AND active = 1', keys[0]) : null;
   let due = null;
   const m = text.match(/\bbis\s+(?:zum\s+|spätestens\s+)?(\d{1,2})\.(\d{1,2})\.(\d{2,4})?/i);
@@ -110,8 +114,13 @@ export function addInbound(user, d) {
   if (isOn('eingang_auto') && !flags.length && sug.sure) {
     const tpl = q.get('SELECT office_name FROM process_templates WHERE id = ?', sug.template_id);
     const office = tpl?.office_name ? q.get(`SELECT * FROM offices WHERE area_id = ? AND ? LIKE '%' || name || '%' ORDER BY length(name) DESC`, sug.area_id, tpl.office_name) : null;
-    const taskId = acceptInbox(user, id, { area_id: sug.area_id, title: sug.title, template_id: sug.template_id, office_id: office?.id || null, due_date: sug.due_date, auto: true });
-    outcome = { ...outcome, autoTask: taskId };
+    // Scheitert die automatische Übernahme, bleibt der Eingang einfach zur Entscheidung liegen
+    try {
+      const taskId = acceptInbox(user, id, { area_id: sug.area_id, title: sug.title, template_id: sug.template_id, office_id: office?.id || null, due_date: sug.due_date, auto: true });
+      outcome = { ...outcome, autoTask: taskId };
+    } catch (err) {
+      audit(user, { entity: 'inbox', entityId: id, areaId: sug.area_id, action: 'hinweis', summary: `Automatische Übernahme nicht möglich: ${err.message}` });
+    }
   }
   return outcome;
 }
@@ -213,7 +222,7 @@ export async function pollMailboxes({ force = false, user = null } = {}) {
     for (const mb of m365.m365Settings().mailboxes) {
       const key = `m365_abruf_${mb.address.toLowerCase()}`;
       // Beim ersten Abruf nur die letzten 7 Tage holen, nicht das ganze Postfach
-      const since = getSetting(key, null) || new Date(Date.now() - 7 * 86_400_000).toISOString();
+      const since = getSetting(key, null) || new Date(nowMs() - 7 * 86_400_000).toISOString();
       try {
         const mails = await m365.fetchMail(mb.address, since, 50);
         let last = since;

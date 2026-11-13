@@ -11,6 +11,7 @@ import { addDays, audit, bad, dateOrNull, formatDateDe, int, nowIso, parseJson, 
 import { scrubPersonalData } from '../guards.js';
 import { onAllStepsDone } from '../services/jobs.js';
 import { isOn } from '../services/catalog.js';
+import { clockNow, nowMs } from '../clock.js';
 
 const TASK_COLUMNS = `t.*, a.name AS area_name, a.color AS area_color, a.type AS area_type, o.name AS office_name,
   u.name AS owner_name, d.name AS deputy_name, pt.name AS template_name,
@@ -27,14 +28,14 @@ export function decorate(t) {
   const d = today();
   const staleDays = getSetting('liegezeit_warnung_tage', 7);
   const open = ['offen', 'in_arbeit', 'wartet'].includes(t.status);
-  const idle = (Date.now() - Date.parse(t.last_activity_at)) / 86_400_000;
+  const idle = (nowMs() - Date.parse(t.last_activity_at)) / 86_400_000;
   return {
     ...t,
     overdue: open && !!t.due_date && t.due_date < d,
     due_today: open && t.due_date === d,
     stale: open && idle > staleDays,
     idle_days: Math.floor(idle),
-    age_days: Math.floor((Date.now() - Date.parse(t.created_at)) / 86_400_000),
+    age_days: Math.floor((nowMs() - Date.parse(t.created_at)) / 86_400_000),
   };
 }
 
@@ -69,7 +70,7 @@ get('/api/tasks', ({ user, query }) => {
     const like = `%${query.q}%`; params.push(like, like, like);
   }
   if (query.stale === '1') {
-    where.push('t.last_activity_at < ?'); params.push(new Date(Date.now() - getSetting('liegezeit_warnung_tage', 7) * 86_400_000).toISOString());
+    where.push('t.last_activity_at < ?'); params.push(new Date(nowMs() - getSetting('liegezeit_warnung_tage', 7) * 86_400_000).toISOString());
   }
   const order = {
     faelligkeit: 't.due_date IS NULL, t.due_date, t.priority DESC, t.id',
@@ -294,7 +295,7 @@ get('/api/dashboard', ({ user }) => {
   const ideasDays = getSetting('idee_vorlage_tage', 60);
   const ideas = q.all(`SELECT t.id, t.title, t.last_activity_at, a.name AS area_name FROM tasks t JOIN areas a ON a.id = t.area_id
                        WHERE ${ac.sql} AND t.kind = 'idee' AND t.status IN ('offen','in_arbeit','wartet') AND t.last_activity_at < ?
-                       ORDER BY t.last_activity_at`, ...ac.params, new Date(Date.now() - ideasDays * 86_400_000).toISOString());
+                       ORDER BY t.last_activity_at`, ...ac.params, new Date(nowMs() - ideasDays * 86_400_000).toISOString());
   const upcoming = q.all(`SELECT e.*, a.name AS area_name, a.color AS area_color FROM events e JOIN areas a ON a.id = e.area_id
                           WHERE ${ac.sql.replace('t.area_id', 'e.area_id')} AND e.date BETWEEN ? AND ? ORDER BY e.date, e.time`, ...ac.params, d, addDays(d, 14));
   const report = q.get(`SELECT * FROM reports WHERE type = 'uebersicht' ORDER BY id DESC LIMIT 1`);

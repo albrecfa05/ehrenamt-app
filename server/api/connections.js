@@ -11,6 +11,7 @@ import { syncFeed, checkMembers, monthlyReport } from '../services/jobs.js';
 import { createTask } from '../services/tasks.js';
 import { decideApproval, requestApproval } from '../services/automation.js';
 import { DEFAULT_STUFEN } from '../calc.js';
+import { gelbExtern } from '../privacy.js';
 import { parseCsv } from './reports.js';
 import { audit, bad, dateOrNull, formatDateDe, int, isDate, notFound, nowIso, oneOf, parseJson, str, today } from '../util.js';
 
@@ -210,7 +211,7 @@ del('/api/sponsors/:id', ({ user, params }) => {
 
 post('/api/members/check', ({ user, body }) => {
   requireAdmin(user);
-  if (!isOn('mitglieder_pruefung')) throw bad('Die Automatisierung „Beitragsstufen aus meinVerein-Export prüfen“ ist nicht eingeschaltet oder die Datenschutzfrage ist noch nicht geklärt (Einstellungen).');
+  if (!isOn('mitglieder_pruefung')) throw bad('Die Automatisierung „Beitragsstufen aus meinVerein-Export prüfen“ ist nicht eingeschaltet oder der Schalter „Gelbe Daten lokal verarbeiten“ ist aus (Einstellungen).');
   const stichtag = isDate(body.stichtag) ? body.stichtag : `${Number(today().slice(0, 4)) + 1}-01-01`;
   const r = checkMembers(parseCsv(body.csv), stichtag, getSetting('beitragsstufen', DEFAULT_STUFEN));
   // Der Export wird nicht gespeichert. Ins Protokoll kommt nur die Anzahl.
@@ -276,6 +277,9 @@ post('/api/drafts/:id/mailbox', ({ user, params }) => {
   const d = q.get('SELECT * FROM drafts WHERE id = ?', int(params.id));
   if (!d || !canSeeArea(user, d.area_id)) throw notFound();
   if (!isOn('postfach_entwuerfe')) throw bad('„Entwürfe im Postfach ablegen“ ist nicht eingeschaltet oder Microsoft 365 ist nicht verbunden.');
+  if (d.task_id && q.get('SELECT data_class FROM tasks WHERE id = ?', d.task_id)?.data_class === 'gelb' && !gelbExtern()) {
+    throw bad('Der Entwurf gehört zu einem Vorgang mit gelben Daten. Dafür muss in den Einstellungen „Gelbe Daten an Microsoft 365 geben“ eingeschaltet sein.');
+  }
   if (d.status !== 'entwurf') throw bad('Der Entwurf ist nicht mehr offen.');
   const mb = m365.mailboxForArea(d.area_id);
   const recipients = parseJson(d.recipients, []);

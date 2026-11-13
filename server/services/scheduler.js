@@ -14,6 +14,7 @@ import { isOn, param } from './catalog.js';
 import { escalate, monthlyReport, sponsorJobs, syncAllFeeds } from './jobs.js';
 import { pollMailboxes } from './inbox.js';
 import { config } from '../config.js';
+import { clockNow, nowMs } from '../clock.js';
 
 const lastDay = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
 const ymd = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(Math.min(d, lastDay(y, m))).padStart(2, '0')}`;
@@ -81,7 +82,7 @@ export function sendReminders(day = today()) {
   const open = q.all(`SELECT * FROM tasks WHERE kind = 'aufgabe' AND status IN ('offen','in_arbeit','wartet')`);
   for (const t of open) {
     const reminded = t.last_reminded_at ? today(new Date(t.last_reminded_at)) : null;
-    const idle = (Date.now() - Date.parse(t.last_activity_at)) / 86_400_000;
+    const idle = (nowMs() - Date.parse(t.last_activity_at)) / 86_400_000;
     let msg = null;
     if (dueOn && t.due_date && t.due_date < day && reminded !== day) {
       msg = `Überfällig seit ${formatDateDe(t.due_date)}: „${t.title}“`;
@@ -107,7 +108,7 @@ export function reviewIdeas(day = today()) {
   if (!isOn('ideen_vorlegen')) return 0;
   const days = getSetting('idee_vorlage_tage', 60);
   const ideas = q.all(`SELECT * FROM tasks WHERE kind = 'idee' AND status IN ('offen','in_arbeit','wartet')`);
-  const due = ideas.filter(i => (Date.now() - Date.parse(i.last_activity_at)) / 86_400_000 > days
+  const due = ideas.filter(i => (nowMs() - Date.parse(i.last_activity_at)) / 86_400_000 > days
     && (!i.last_reminded_at || today(new Date(i.last_reminded_at)) <= addDays(day, -days)));
   if (!due.length) return 0;
   const admins = q.all(`SELECT id FROM users WHERE active = 1 AND role = 'admin'`).map(u => u.id);
@@ -156,6 +157,10 @@ function dailyJobs(now) {
 
 // Abläufe mit Netzwerkzugriff (Postfach, Spielpläne) laufen asynchron und überlappen sich nicht.
 let lastPoll = 0;
+const inflight = new Set();
+const track = (p) => { inflight.add(p); p.finally(() => inflight.delete(p)); return p; };
+/** Wartet, bis laufende Postfach- und Spielplan-Abrufe fertig sind (für den Simulator-Zeitraffer). */
+export async function settle() { while (inflight.size) await Promise.allSettled([...inflight]); }
 function networkJobs(now) {
   const day = today(now);
   const { hour } = berlinClock(now);
@@ -163,16 +168,16 @@ function networkJobs(now) {
     const every = Math.max(5, Number(param('postfach_abruf', 'minuten')) || 15) * 60_000;
     if (now.getTime() - lastPoll >= every) {
       lastPoll = now.getTime();
-      pollMailboxes().catch(err => console.error('[Postfach] Fehler:', err.message));
+      track(pollMailboxes().catch(err => console.error('[Postfach] Fehler:', err.message)));
     }
   }
   if (isOn('spielplan_import') && hour >= Number(param('spielplan_import', 'stunde') ?? 6) && getSetting('spielplan_letzter_abruf', null) !== day) {
     setSetting('spielplan_letzter_abruf', day);
-    syncAllFeeds().catch(err => console.error('[Spielplan] Fehler:', err.message));
+    track(syncAllFeeds().catch(err => console.error('[Spielplan] Fehler:', err.message)));
   }
 }
 
-export function tick(now = new Date()) {
+export function tick(now = clockNow()) {
   try {
     dailyJobs(now);
     runScheduledRules(now);

@@ -1,13 +1,14 @@
 // Anmeldung, Ersteinrichtung und eigenes Konto.
 
 import { get, post, put } from '../http.js';
-import { q, tx } from '../db.js';
+import { q, tx, getSetting, setSetting } from '../db.js';
 import {
   checkPasswordStrength, checkRateLimit, clearCookie, clearFailures, clientIp, createSession, destroySession,
   hashPassword, noteFailure, randomToken, revokeAllSessions, sessionCookie, verifyPassword,
 } from '../auth.js';
 import { audit, bad, HttpError, nowIso, str } from '../util.js';
 import { areaIds } from '../access.js';
+import { clockOffset } from '../clock.js';
 
 const publicUser = (u) => u && ({
   id: u.id, name: u.name, login: u.login, role: u.role, must_change_pw: !!u.must_change_pw,
@@ -30,8 +31,12 @@ post('/api/auth/setup', ({ body, req, res }) => {
     const r = q.run(`INSERT INTO users (name, login, pw_hash, role, created_at, calendar_token) VALUES (?, ?, ?, 'admin', ?, ?)`,
       name, login, hashPassword(body.password), nowIso(), randomToken());
     const id = Number(r.lastInsertRowid);
+    // Bei einer neuen App gibt es noch nichts „Neues seit dem letzten Besuch“
+    q.run('UPDATE users SET seen_changelog_id = (SELECT COALESCE(MAX(id), 0) FROM changelog) WHERE id = ?', id);
     const user = { id, name };
     audit(user, { entity: 'user', entityId: id, action: 'angelegt', summary: `Ersteinrichtung: Admin „${name}“ angelegt` });
+    // Neue, leere App: Einrichtungsassistent anbieten (bestehende Installationen haben diesen Eintrag nicht)
+    if (!getSetting('einrichtung', null)) setSetting('einrichtung', { done: false, steps: {} });
     res.setHeader('Set-Cookie', sessionCookie(createSession(id, req)));
     return { ok: true };
   });
@@ -80,7 +85,8 @@ get('/api/me', ({ user }) => {
   const unseen = q.all('SELECT * FROM changelog WHERE id > ? ORDER BY id DESC LIMIT 30', user.seen_changelog_id);
   const approvals = user.role === 'admin' ? q.get(`SELECT COUNT(*) AS n FROM approvals WHERE status = 'offen'`).n : 0;
   const inbox = q.get(`SELECT COUNT(*) AS n FROM inbox WHERE status = 'neu'`).n;
-  return { user: publicUser(user), areas, unread, unseenChangelog: unseen, counts: { approvals, inbox } };
+  return { user: publicUser(user), areas, unread, unseenChangelog: unseen, counts: { approvals, inbox }, clock_offset: clockOffset(), simulator: process.env.TTE_SIMULATOR === '1',
+    setup_open: user.role === 'admin' && getSetting('einrichtung', null)?.done === false };
 });
 
 // Eigene Sitzungen ansehen und andere beenden (z. B. nach Geräteverlust)

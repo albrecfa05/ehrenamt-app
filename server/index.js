@@ -23,10 +23,16 @@ import './api/reports.js';
 import './api/connections.js';
 import './api/ki.js';
 import './api/filing.js';
+import './api/setup.js';
 
-export function createServer() {
+/**
+ * opts.areas: eigene Startbereiche statt der vorgegebenen (leere App, Simulator).
+ * Ohne Angabe gilt TTE_LEER=1 → ein einziger Platzhalter-Bereich „Mein Verein“.
+ */
+export function createServer(opts = {}) {
   openDb();
-  seedBase();
+  const areas = opts.areas || (process.env.TTE_LEER === '1' ? [{ key: 'verein', name: 'Mein Verein', type: 'verein', color: '#2563eb' }] : undefined);
+  seedBase({ areas });
   seedUpgrades();
   setM365Check(m365Configured);
   return http.createServer((req, res) => {

@@ -18,6 +18,7 @@ import { TRIGGERS } from './automation.js';
 import { askStructured, ClaudeError, MODEL, estimateUsd } from '../connectors/claude.js';
 import * as m365 from '../connectors/m365.js';
 import { cleanFilingRule, MODES as FILING_MODES } from './filing.js';
+import { gelbExtern, gelbLokal } from '../privacy.js';
 
 // ---------- Antwortformat (JSON-Schema, alle Felder Pflicht) ----------
 
@@ -157,9 +158,9 @@ function buildContext(mode) {
       .map(r => ({ name: r.name, absender: r.sender_contains, betreff: r.subject_contains, dateiname: r.filename_contains, dateitypen: r.file_types, ordner: r.folder, modus: r.mode, aktiv: !!r.active })),
     ablage_ordner: q.all(`SELECT DISTINCT folder FROM files WHERE folder <> '' AND deleted_at IS NULL UNION SELECT DISTINCT folder FROM filing_rules WHERE folder <> ''`).map(r => r.folder),
     lage: {
-      datenschutzfrage_geklaert: !!getSetting('datenschutz_gelb_freigegeben', false),
+      gelbe_daten_lokal_automatisieren: gelbLokal(),
+      gelbe_daten_an_microsoft365: gelbExtern(),
       microsoft365_verbunden: m365.isConfigured(),
-      gelbe_vorgaenge_laufen_automatisch: !!getSetting('datenschutz_gelb_freigegeben', false),
     },
   };
   let summary = 'Bausteine, Katalog, Bereiche/Ämter, Vorgangs- und Textvorlagen (Namen), bestehende Regeln';
@@ -289,8 +290,8 @@ export function checkProposals(data) {
       cleanRuleFn(rule);
       const hinweise = [];
       if (ALLOWED_ACTIONS[rule.action_type]?.external) hinweise.push('Stufe 3: Jede Ausführung braucht zusätzlich ein Ja unter „Freigaben“.');
-      if (rule.template_id && q.get('SELECT data_class FROM process_templates WHERE id = ?', rule.template_id)?.data_class === 'gelb' && !getSetting('datenschutz_gelb_freigegeben', false)) {
-        hinweise.push('Vorgang mit gelben Daten: läuft erst, wenn die Datenschutzfrage geklärt ist.');
+      if (rule.template_id && q.get('SELECT data_class FROM process_templates WHERE id = ?', rule.template_id)?.data_class === 'gelb' && !gelbLokal()) {
+        hinweise.push('Vorgang mit gelben Daten: läuft erst, wenn „Gelbe Daten lokal verarbeiten“ eingeschaltet ist.');
       }
       return { ok: true, fehler: [], hinweise };
     } catch (err) {

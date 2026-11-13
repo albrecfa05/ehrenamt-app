@@ -1,7 +1,7 @@
 // Einstieg der Oberfläche: Anmeldung, Grundgerüst (Navigation, Kopfzeile), Router.
 
 import { api, setUnauthorizedHandler } from './api.js';
-import { h, clear, icon, modal, toast, errorToast, field, input, fmtDateTime, relTime, debounce, statusPill, areaChip, button } from './ui.js';
+import { h, clear, icon, modal, toast, errorToast, field, input, fmtDateTime, relTime, debounce, statusPill, areaChip, button, nowMs } from './ui.js';
 import { state, loadState, refreshMe, isAdmin, onState } from './state.js';
 import { openTaskForm } from './views/taskform.js';
 
@@ -24,6 +24,8 @@ import account from './views/account.js';
 import help from './views/help.js';
 import search from './views/search.js';
 import sponsors from './views/sponsors.js';
+import setup from './views/setup.js';
+import simulator from './views/simulator.js';
 
 const ROUTES = [
   ['start', dashboard], ['aufgaben', tasks], ['ideen', (el, p) => tasks(el, { ...p, ideas: true })], ['aufgabe/:id', task],
@@ -32,6 +34,7 @@ const ROUTES = [
   ['ablage', files], ['auskunft', knowledge], ['auskunft/:tab', knowledge], ['handbuch', handbook],
   ['automatisierung', automation], ['automatisierung/:tab', automation], ['kennzahlen', metrics], ['protokoll', auditView],
   ['admin', admin], ['admin/:tab', admin], ['sponsoren', sponsors], ['konto', account], ['hilfe', help], ['hilfe/:tab', help], ['suche', search],
+  ['einrichtung', setup], ['simulator', simulator],
 ];
 
 const NAV = [
@@ -49,7 +52,7 @@ const NAV = [
 ];
 
 const root = document.getElementById('app');
-let main, navEl, bellBadge, cleanup = null;
+let main, navEl, bellBadge, simBanner, cleanup = null;
 
 // ---------- Darstellung hell/dunkel ----------
 function applyTheme(t) {
@@ -106,7 +109,7 @@ function showSetup() {
     field('Name', input({ name: 'name', required: true, autocomplete: 'name', placeholder: 'Vor- und Nachname' })),
     field('Anmeldename', input({ name: 'login', required: true, autocomplete: 'username', placeholder: 'z. B. fabian' })),
     field('Passwort', input({ name: 'password', type: 'password', required: true, autocomplete: 'new-password' }), PW_HINT),
-  ], 'Konto anlegen', async (v) => { await api.post('/api/auth/setup', v); await startApp(); }));
+  ], 'Konto anlegen', async (v) => { await api.post('/api/auth/setup', v); location.hash = '#/einrichtung'; await startApp(); }));
 }
 
 function showLogin() {
@@ -139,6 +142,8 @@ async function startApp() {
   searchInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && searchInput.value.trim().length >= 2) location.hash = `#/suche?q=${encodeURIComponent(searchInput.value.trim())}`;
   });
+  simBanner = h('div', { class: 'sim-banner', hidden: !state.me.simulator });
+  drawSimBanner();
   const topbar = h('header', { class: 'topbar' },
     h('button', { class: 'icon-btn nav-toggle', 'aria-label': 'Menü', onclick: () => document.body.classList.toggle('nav-open') }, icon('menu')),
     h('div', { class: 'search-wrap' }, icon('search', 16), searchInput),
@@ -151,9 +156,9 @@ async function startApp() {
       h('a', { class: 'brand', href: '#/start' }, h('span', { class: 'brand-mark' }, logo()), h('span', {}, 'Ehrenamt', h('small', {}, 'Tischtennis'))),
       navEl),
     h('div', { class: 'nav-backdrop', onclick: () => document.body.classList.remove('nav-open') }),
-    h('div', { class: 'content' }, h('a', { class: 'skip', href: '#main', onclick: (e) => { e.preventDefault(); main.focus(); } }, 'Zum Inhalt'), topbar, main)));
+    h('div', { class: 'content' }, h('a', { class: 'skip', href: '#main', onclick: (e) => { e.preventDefault(); main.focus(); } }, 'Zum Inhalt'), simBanner, topbar, main)));
   renderNav();
-  onState(renderNav);
+  onState(() => { renderNav(); drawSimBanner(); });
   window.addEventListener('hashchange', route);
   document.addEventListener('keydown', shortcuts);
   route();
@@ -171,6 +176,8 @@ function renderNav() {
   };
   const groups = NAV.map(([title, items]) => h('div', { class: 'nav-group' }, h('div', { class: 'nav-title' }, title), items.map(link)));
   const bottom = h('div', { class: 'nav-group nav-bottom' },
+    state.me.simulator ? link(['simulator', 'Simulator', 'play']) : null,
+    state.me.setup_open ? link(['einrichtung', 'Einrichtung', 'check']) : null,
     isAdmin() ? link(['admin', 'Adminpanel', 'settings']) : null,
     link(['hilfe', 'Hilfe und FAQ', 'help']),
     h('div', { class: 'nav-user' },
@@ -181,6 +188,16 @@ function renderNav() {
   clear(navEl, groups, bottom);
   if (bellBadge) { bellBadge.hidden = !state.me.unread; bellBadge.textContent = state.me.unread > 9 ? '9+' : state.me.unread; }
 }
+
+// Simulator: Hinweis auf Fantasiedaten und simuliertes Datum
+function drawSimBanner() {
+  if (!simBanner || !state.me?.simulator) return;
+  const d = new Date(nowMs());
+  clear(simBanner, icon('play', 14), h('strong', {}, 'Vorstandsarbeit-Simulator'),
+    h('span', {}, ` · Fantasiedaten · simulierter Tag: ${d.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`),
+    h('a', { href: '#/simulator' }, 'Zur Steuerung →'));
+}
+export { drawSimBanner };
 
 const initials = (n) => n.split(/\s+/).map(p => p[0]).slice(0, 2).join('').toUpperCase();
 

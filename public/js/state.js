@@ -1,6 +1,7 @@
 // Gemeinsam genutzte Stammdaten im Browser (Bereiche, Personen, Ämter, Vorlagen).
 
 import { api } from './api.js';
+import { setClockOffset } from './ui.js';
 
 export const state = {
   me: null,          // { user, areas, unread, unseenChangelog, counts }
@@ -20,6 +21,7 @@ export async function loadState() {
   const [me, users, offices, tpls, catalog] = await Promise.all([
     api.get('/api/me'), api.get('/api/users'), api.get('/api/offices'), api.get('/api/process-templates'), api.get('/api/catalog'),
   ]);
+  setClockOffset(me.clock_offset);
   Object.assign(state, { me, users, offices, processTemplates: tpls, auto: autoMap(catalog) });
   emit();
 }
@@ -30,6 +32,7 @@ export async function refreshCatalog() { state.auto = autoMap(await api.get('/ap
 
 export async function refreshMe() {
   state.me = await api.get('/api/me');
+  setClockOffset(state.me.clock_offset);
   emit();
 }
 

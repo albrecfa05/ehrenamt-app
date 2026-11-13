@@ -5,11 +5,12 @@
 
 import { getSetting, setSetting } from '../db.js';
 import { keyPresent as claudeKeyPresent } from '../connectors/claude.js';
+import { gelbLokal } from '../privacy.js';
 
 /**
  * Felder je Eintrag:
  *  key, group, label, description, level (0–4), default (an/aus), source (Anforderung),
- *  requires: ['m365'] | ['datenschutz'] – Voraussetzungen,
+ *  requires: ['m365'] | ['gelb_lokal'] | ['claude'] – Voraussetzungen,
  *  params: [{ name, label, type: number|text|select|boolean, default, options, setting? }]
  *    setting: Parameter wird in dieser allgemeinen Einstellung gespeichert (für ältere Einstellungen)
  */
@@ -87,10 +88,10 @@ export const CATALOG = [
     params: [] },
 
   // ----- Daten -----
-  { key: 'mitglieder_pruefung', group: 'Mitglieder (meinVerein)', label: 'Beitragsstufen aus meinVerein-Export prüfen', level: 2, default: false, requires: ['datenschutz'], source: 'VOR-2, 5.2',
+  { key: 'mitglieder_pruefung', group: 'Mitglieder (meinVerein)', label: 'Beitragsstufen aus meinVerein-Export prüfen', level: 2, default: false, requires: ['gelb_lokal'], source: 'VOR-2, 5.2',
     description: 'Ein Admin lädt den Excel-/CSV-Export aus meinVerein hoch; die App ermittelt anstehende Stufenwechsel und legt eine Aufgabe mit Namen an. Der Export wird nicht gespeichert.',
     params: [] },
-  { key: 'loeschfrist_gelb', group: 'Mitglieder (meinVerein)', label: 'Löschfrist für gelbe Anhänge', level: 2, default: false, requires: ['datenschutz'], source: 'DAT-2, NFA-12',
+  { key: 'loeschfrist_gelb', group: 'Mitglieder (meinVerein)', label: 'Löschfrist für gelbe Anhänge', level: 2, default: false, requires: ['gelb_lokal'], source: 'DAT-2, NFA-12',
     description: 'Löscht Anhänge mit gelben Daten eine bestimmte Zeit nach Abschluss des Vorgangs. Das Protokoll bleibt erhalten.',
     params: [{ name: 'tage', label: 'Tage nach Abschluss', type: 'number', default: 365 }] },
 ];
@@ -125,7 +126,7 @@ export function requirementsMet(c) {
   const missing = [];
   for (const r of c.requires || []) {
     if (r === 'm365' && !m365Check()) missing.push('Microsoft 365 ist nicht verbunden (Adminpanel → Verbindungen)');
-    if (r === 'datenschutz' && !getSetting('datenschutz_gelb_freigegeben', false)) missing.push('Datenschutzfrage noch nicht geklärt (Einstellungen)');
+    if ((r === 'gelb_lokal' || r === 'datenschutz') && !gelbLokal()) missing.push('Schalter „Gelbe Daten lokal verarbeiten“ ist aus (Einstellungen)');
     if (r === 'claude' && !claudeKeyPresent()) missing.push('Kein Claude-API-Schlüssel (ANTHROPIC_API_KEY in der .env)');
   }
   return { ok: !missing.length, missing };

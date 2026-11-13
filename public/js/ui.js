@@ -103,6 +103,12 @@ export function icon(name, size = 18) {
   return svg;
 }
 
+// ---------- Uhr (im Simulator verschoben) ----------
+
+let clockOffsetMs = 0;
+export function setClockOffset(ms) { clockOffsetMs = Number(ms) || 0; }
+export const nowMs = () => Date.now() + clockOffsetMs;
+
 // ---------- Formate ----------
 
 const tz = 'Europe/Berlin';
@@ -122,7 +128,7 @@ export function fmtDateTime(s) {
 }
 export function relTime(s) {
   if (!s) return '';
-  const diff = (Date.now() - Date.parse(s)) / 1000;
+  const diff = (nowMs() - Date.parse(s)) / 1000;
   if (diff < 60) return 'gerade eben';
   if (diff < 3600) return `vor ${Math.floor(diff / 60)} Min.`;
   if (diff < 86400) return `vor ${Math.floor(diff / 3600)} Std.`;
@@ -132,7 +138,7 @@ export function relTime(s) {
   return fmtDate(s);
 }
 export function today() {
-  return new Intl.DateTimeFormat('sv-SE', { timeZone: tz }).format(new Date());
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: tz }).format(new Date(nowMs()));
 }
 export function addDays(s, n) {
   const d = new Date(s + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10);

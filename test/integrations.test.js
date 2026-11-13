@@ -96,6 +96,10 @@ test('Entwurf ins Postfach nur nach Freigabe, Vorgangsnummer im Betreff, kein Ve
   const texts = await admin.get('/api/text-templates');
   const tpl = texts.data.find(t => t.key === 'T-SPIELBERICHT');
   const d = await admin.post(`/api/tasks/${ctx.taskId}/drafts`, { template_id: tpl.id, values: { mannschaft: 'Herren I' } });
+  const blocked = await admin.post(`/api/drafts/${d.data.id}/mailbox`);
+  assert.equal(blocked.status, 400, 'gelbe Aufgabe: ohne Schalter „gelb extern“ nicht ins Postfach');
+  assert.match(blocked.data.error, /Gelbe Daten an Microsoft 365/);
+  await admin.put('/api/settings', { gelb_extern: true });
   const before = calls.length;
   const req = await admin.post(`/api/drafts/${d.data.id}/mailbox`);
   assert.ok(req.data.approvalId);

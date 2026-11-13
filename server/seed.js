@@ -590,18 +590,39 @@ const RULES = [
     template: 'VOR-1', trigger_type: 'statuswechsel', trigger_config: { zu: 'in_arbeit' }, action_type: 'entwurf_erzeugen', action_config: { text: 'T-WILLKOMMEN' }, level: 1 },
 ];
 
-export function seedBase() {
+/**
+ * Legt für einen (neuen) Bereich die üblichen Ämter und den Jahreskalender an.
+ * Auch für Bereiche, die später im Einrichtungsassistenten hinzukommen.
+ */
+export function seedAreaDefaults(areaId, type, { offices = true, calendar = true } = {}) {
+  const officeIds = {};
+  if (offices) {
+    for (const o of type === 'verein' ? VEREIN_OFFICES : BEZIRK_OFFICES) {
+      const ex = q.get('SELECT id FROM offices WHERE area_id = ? AND name = ?', areaId, o);
+      officeIds[o] = ex?.id ?? Number(q.run('INSERT INTO offices (area_id, name) VALUES (?, ?)', areaId, o).lastInsertRowid);
+    }
+  }
+  if (calendar) {
+    const procId = (k) => q.get('SELECT id FROM process_templates WHERE key = ?', k)?.id ?? null;
+    const officeId = (n) => officeIds[n] ?? q.get('SELECT id FROM offices WHERE area_id = ? AND name = ?', areaId, n)?.id ?? null;
+    for (const [title, freq, month, day, lead, office, tpl, desc] of type === 'verein' ? VEREIN_CALENDAR : BEZIRK_CALENDAR) {
+      if (q.get('SELECT 1 FROM recurring WHERE area_id = ? AND title = ?', areaId, title)) continue;
+      q.run('INSERT INTO recurring (area_id, office_id, template_id, title, description, freq, month, day, lead_days, assumption) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)',
+        areaId, officeId(office), tpl ? procId(tpl) : null, title, desc, freq, month, day, lead);
+    }
+  }
+}
+
+/**
+ * Grunddaten beim ersten Start. opts.areas ersetzt die vorgegebenen Bereiche (z. B. für den Simulator).
+ */
+export function seedBase(opts = {}) {
   if (q.get('SELECT 1 FROM areas LIMIT 1')) return false;
+  const areas = opts.areas || AREAS;
   tx(() => {
     const now = nowIso();
     const areaIds = {};
-    for (const a of AREAS) areaIds[a.key] = Number(q.run('INSERT INTO areas (key, name, type, color) VALUES (?, ?, ?, ?)', a.key, a.name, a.type, a.color).lastInsertRowid);
-    const officeIds = {};
-    for (const a of AREAS) {
-      for (const o of a.type === 'verein' ? VEREIN_OFFICES : BEZIRK_OFFICES) {
-        officeIds[`${a.key}|${o}`] = Number(q.run('INSERT INTO offices (area_id, name) VALUES (?, ?)', areaIds[a.key], o).lastInsertRowid);
-      }
-    }
+    for (const a of areas) areaIds[a.key] = Number(q.run('INSERT INTO areas (key, name, type, color) VALUES (?, ?, ?, ?)', a.key, a.name, a.type, a.color).lastInsertRowid);
     const textIds = {};
     for (const t of TEXTS) {
       textIds[t.key] = Number(q.run('INSERT INTO text_templates (key, name, category, kind, subject, body, notes, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
@@ -617,12 +638,7 @@ export function seedBase() {
         'INSERT INTO process_steps (template_id, pos, title, description, manual, text_template_id, calc) VALUES (?, ?, ?, ?, ?, ?, ?)',
         id, i + 1, title, desc || '', manual ? 1 : 0, textKey ? textIds[textKey] : null, calc || null));
     }
-    const addCal = (areaKey, rows) => rows.forEach(([title, freq, month, day, lead, office, tpl, desc]) => q.run(
-      'INSERT INTO recurring (area_id, office_id, template_id, title, description, freq, month, day, lead_days, assumption) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)',
-      areaIds[areaKey], officeIds[`${areaKey}|${office}`] ?? null, tpl ? procIds[tpl] : null, title, desc, freq, month, day, lead));
-    addCal('ttsf-hohberg', VEREIN_CALENDAR);
-    addCal('buehlertal', VEREIN_CALENDAR);
-    addCal('bezirk-mittelbaden', BEZIRK_CALENDAR);
+    for (const a of areas) seedAreaDefaults(areaIds[a.key], a.type);
     SYSTEMS.forEach((s, i) => q.run('INSERT INTO systems (name, purpose, leading_data, access, export_path, account, notes, pos) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', ...s, i + 1));
     FAQ.forEach(([c, qq, a], i) => q.run('INSERT INTO faq (category, question, answer, pos, updated_at) VALUES (?, ?, ?, ?, ?)', c, qq, a, i, now));
     const docId = Number(q.run(`INSERT INTO kb_documents (area_id, title, source_type, valid_from, notes, created_at, updated_at) VALUES (NULL, ?, 'sonstiges', ?, ?, ?, ?)`,

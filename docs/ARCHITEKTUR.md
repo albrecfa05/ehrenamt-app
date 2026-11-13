@@ -27,7 +27,9 @@ server/
   templating.js     Textvorlagen mit {{variablen}}
   calc.js           Rechner mit Rechenweg (AUT-12)
   search.js         Volltextsuche für Deutsch (BM25, Umlaute, einfache Stammformen)
-  seed.js           Grunddaten beim ersten Start; seedUpgrades() ergänzt neue Vorlagen in bestehenden Installationen
+  seed.js           Grunddaten beim ersten Start; seedAreaDefaults() für neue Bereiche; seedUpgrades() ergänzt neue Vorlagen
+  clock.js          Zentrale Uhr: in der echten App Echtzeit, im Simulator mit Zeitraffer-Versatz
+  privacy.js        Die beiden Datenschutz-Schalter gelbLokal() / gelbExtern()
   connectors/
     m365.js         Microsoft Graph: Mails lesen, Entwürfe/Termine/Dateien anlegen – keine Sendefunktion
     claude.js       Claude (Anthropic SDK): strukturierte Vorschläge, keine Werkzeuge
@@ -42,7 +44,9 @@ server/
     filing.js       Eingangs- und Ablageregeln: Abgleich, Vorschau, Ablegen, Anwenden auf neue Eingänge
     ki.js           KI-Assistent: Kontext (nur grüne Daten), Antwortformat, Prüfung, Übernahme
     scheduler.js    Minütlicher Takt: ruft alle Abläufe auf, jeder prüft selbst, ob er eingeschaltet ist
-  api/              Schnittstellen je Fachgebiet (registrieren sich beim Import selbst)
+  api/              Schnittstellen je Fachgebiet (registrieren sich beim Import selbst); setup.js = Einrichtungsassistent
+  sim/              Nur im Simulator geladen: fakes.js (Nachbau Graph/ICS/Claude), world.js (Demo-Verein),
+                    scenarios.js (Szenarien mit Prüfungen), engine.js (Zeitraffer, Auswertung), api.js (/api/sim)
 public/
   index.html, css/app.css
   js/app.js         Anmeldung, Grundgerüst, Router (#/pfad)
@@ -50,7 +54,7 @@ public/
   js/ui.js          DOM-Helfer h(), Dialoge, Formate, Abzeichen, Icons
   js/state.js       Gemeinsame Stammdaten im Browser
   js/views/*.js     Eine Datei je Seite
-scripts/            demo.js, backup.js, reset-password.js
+scripts/            demo.js, leer.js, simulator.js, backup.js, reset-password.js
 test/               Automatische Tests (node --test)
 data/               Laufzeitdaten: ehrenamt.sqlite und ablage/ (nicht ins Versionsarchiv!)
 ```

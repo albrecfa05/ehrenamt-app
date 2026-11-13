@@ -2,6 +2,7 @@
 
 import { q } from './db.js';
 import { config } from './config.js';
+import { clockNow, nowMs } from './clock.js';
 
 export class HttpError extends Error {
   constructor(status, message, extra = {}) {
@@ -16,16 +17,16 @@ export const notFound = (msg = 'Nicht gefunden.') => new HttpError(404, msg);
 
 // ---------- Zeit ----------
 
-export const nowIso = () => new Date().toISOString();
+export const nowIso = () => clockNow().toISOString();
 
 const dayFmt = new Intl.DateTimeFormat('sv-SE', { timeZone: config.timezone, year: 'numeric', month: '2-digit', day: '2-digit' });
 const hourFmt = new Intl.DateTimeFormat('de-DE', { timeZone: config.timezone, hour: '2-digit', hourCycle: 'h23', weekday: 'short' });
 
 /** Heutiges Datum in Berlin als JJJJ-MM-TT */
-export const today = (d = new Date()) => dayFmt.format(d);
+export const today = (d = clockNow()) => dayFmt.format(d);
 
 /** Stunde (0–23) und Wochentag (1 = Montag … 7 = Sonntag) in Berlin */
-export function berlinClock(d = new Date()) {
+export function berlinClock(d = clockNow()) {
   const parts = hourFmt.formatToParts(d);
   const hour = Number(parts.find(p => p.type === 'hour').value);
   const wd = parts.find(p => p.type === 'weekday').value.replace('.', '');

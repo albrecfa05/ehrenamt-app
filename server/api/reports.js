@@ -8,6 +8,7 @@ import { rank } from '../search.js';
 import { createTask } from '../services/tasks.js';
 import { audit, bad, int, isDate, nowIso, parseJson, str, today, addDays, formatDateDe } from '../util.js';
 import { decorate } from './tasks.js';
+import { clockNow, nowMs } from '../clock.js';
 
 // ---------- Protokoll ----------
 
@@ -66,7 +67,7 @@ get('/api/metrics', ({ user, query }) => {
   const ac = areaClause(user, 't.area_id');
   const areaFilter = query.area ? ` AND t.area_id = ${int(query.area)}` : '';
   const months = Math.min(Math.max(int(query.months) || 12, 1), 36);
-  const now = new Date();
+  const now = clockNow();
   const list = [];
   for (let i = months - 1; i >= 0; i--) {
     const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));

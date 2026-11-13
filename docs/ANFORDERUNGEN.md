@@ -141,3 +141,7 @@ Datenklasse, zugeordneten Textvorlagen und Rechnern angelegt. Neue Vorgangstypen
 | Anhänge ohne Aufgabe ablegen; SharePoint-Kopie auch für Mailanhänge | ABL-1 | Eingang → Ablegen |
 | Verpasste Zeitplan-Läufe werden nachgeholt (bis 3 Tage, nie vor der Freigabe); Frist-Regeln greifen für alles bis X Tage vor der Frist | AUT-2, AUT-13 | `services/automation.js` |
 | KI schlägt auch Ablageregeln vor | Kap. 6 | Automatisierungen → Mit KI erstellen |
+| Leere App und Einrichtungsassistent: neun Schritte mit echtem Stand aus den Daten, Voreinstellungen „Vorsichtig/Empfohlen/Umfassend“, Kalender auf einmal bestätigen | Kap. 8 (Einführung), ROL-3 | `npm run leer`; Navigation „Einrichtung“; `test/setup.test.js` |
+| Zwei Datenschutz-Schalter: gelbe Daten lokal automatisch verarbeiten / gelbe Daten an Microsoft 365 geben (KI bekommt nie gelbe Daten) | DAT-2, DAT-4, DAT-6 | Adminpanel → Einstellungen; Assistent Schritt „Datenschutz“ |
+| Vorstandsarbeit-Simulator: Demo-Verein mit Fantasiedaten, Nachbau von Microsoft 365, click-TT und Claude, Zeitraffer, 16 Szenarien mit Selbstprüfung | Kap. 8 (Schulung), 9 (Abnahme) | `npm run simulator`; `test/simulator.test.js` |
+| Zentrale Uhr (Zeitraffer im Simulator; in der echten App immer Echtzeit) | – | `server/clock.js` |

@@ -16,7 +16,9 @@ import { renderDraft } from '../templating.js';
 import { addDays, audit, bad, berlinClock, forbidden, nowIso, parseJson, today, formatDateDe, STATUS_LABEL, LEVEL_LABEL } from '../util.js';
 import { createTask, notify, setStatusHook } from './tasks.js';
 import { isOn, param } from './catalog.js';
+import { gelbExtern, gelbLokal } from '../privacy.js';
 import * as m365 from '../connectors/m365.js';
+import { clockNow, nowMs } from '../clock.js';
 
 export const TRIGGERS = {
   zeitplan: 'Zeitplan',
@@ -65,13 +67,14 @@ export function validateRule(r) {
   return action;
 }
 
+/** Regel zu einem gelben Vorgang? Dann braucht sie „gelb lokal“, und wenn sie die App verlässt, auch „gelb extern“. */
 function yellowBlocked(rule) {
-  if (getSetting('datenschutz_gelb_freigegeben', false)) return false;
-  if (rule.template_id) {
-    const tpl = q.get('SELECT data_class FROM process_templates WHERE id = ?', rule.template_id);
-    if (tpl?.data_class === 'gelb') return true;
-  }
-  return false;
+  if (!rule.template_id) return null;
+  const tpl = q.get('SELECT data_class FROM process_templates WHERE id = ?', rule.template_id);
+  if (tpl?.data_class !== 'gelb') return null;
+  if (!gelbLokal()) return 'Vorgang mit gelben Daten: Automatisierung wartet auf den Schalter „Gelbe Daten lokal verarbeiten“ (Einstellungen).';
+  if (ALLOWED_ACTIONS[rule.action_type]?.external && !gelbExtern()) return 'Vorgang mit gelben Daten: Ausführung nach außen wartet auf den Schalter „Gelbe Daten an Microsoft 365 geben“ (Einstellungen).';
+  return null;
 }
 
 // ---------- Ausführen ----------
@@ -92,7 +95,8 @@ export function runRule(rule, { user = null, trigger = 'auf Zuruf', context = {}
 
   try {
     if (!rule.approved) return log('gesperrt', 'Die Regel ist noch nicht von einem Admin freigegeben.');
-    if (yellowBlocked(rule)) return log('gesperrt', 'Vorgang mit gelben Daten: Automatisierung wartet auf die Antwort zur Datenschutzfrage (Einstellungen).');
+    const yb = yellowBlocked(rule);
+    if (yb) return log('gesperrt', yb);
     const ac = parseJson(rule.action_config, {});
     validateRule({ ...rule, trigger_config: parseJson(rule.trigger_config, {}), action_config: ac });
     const action = ALLOWED_ACTIONS[rule.action_type];
@@ -279,6 +283,9 @@ async function executeApproved(user, a, payload) {
       const d = q.get('SELECT * FROM drafts WHERE id = ?', payload.draft_id);
       if (!d) throw bad('Der Entwurf existiert nicht mehr.');
       if (d.status !== 'entwurf') throw bad('Der Entwurf ist nicht mehr offen.');
+      if (d.task_id && q.get('SELECT data_class FROM tasks WHERE id = ?', d.task_id)?.data_class === 'gelb' && !gelbExtern()) {
+        throw bad('Entwurf gehört zu einem Vorgang mit gelben Daten – der Schalter „Gelbe Daten an Microsoft 365 geben“ ist aus.');
+      }
       const mb = payload.mailbox || m365.mailboxForArea(d.area_id);
       if (!mb) throw bad('Kein Postfach für diesen Bereich verbunden.');
       // Erneut prüfen, was tatsächlich hinausgeht (AUT-8, AUT-9)
@@ -295,6 +302,7 @@ async function executeApproved(user, a, payload) {
     case 'ablage_hochladen': {
       const f = q.get('SELECT * FROM files WHERE id = ? AND deleted_at IS NULL', payload.file_id);
       if (!f) throw bad('Die Datei existiert nicht mehr.');
+      if (f.data_class === 'gelb' && !gelbExtern()) throw bad('Gelbe Datei – der Schalter „Gelbe Daten an Microsoft 365 geben“ ist aus.');
       const { readStoredFile } = await import('./files.js');
       const folder = (m365.m365Settings().ablage_ordner || '').replace(/^\/+|\/+$/g, '');
       const rel = [folder, payload.path].filter(Boolean).join('/');
@@ -321,7 +329,7 @@ export function buildOverview(areaIds = null, title = 'Wöchentliche Übersicht'
   const overdue = open.filter(t => t.due_date && t.due_date < d);
   const soon = open.filter(t => t.due_date && t.due_date >= d && t.due_date <= addDays(d, 7));
   const waiting = open.filter(t => t.status === 'wartet');
-  const stale = open.filter(t => (Date.now() - Date.parse(t.last_activity_at)) / 86_400_000 > staleDays);
+  const stale = open.filter(t => (nowMs() - Date.parse(t.last_activity_at)) / 86_400_000 > staleDays);
   const inbox = q.get(`SELECT COUNT(*) AS n FROM inbox WHERE status = 'neu'`).n;
   const approvals = q.get(`SELECT COUNT(*) AS n FROM approvals WHERE status = 'offen'`).n;
   const pick = (t) => ({ id: t.id, title: t.title, area: t.area, owner: t.owner, due_date: t.due_date, status: STATUS_LABEL[t.status], waiting_who: t.waiting_who });
@@ -349,7 +357,7 @@ const stamp = (d) => berlinStamp.format(d);
  * Letzter planmäßiger Zeitpunkt einer Zeitplan-Regel vor oder gleich „now“, als „JJJJ-MM-TT HH“.
  * Täglich: heute bzw. gestern zur Stunde; wöchentlich: letzter passender Wochentag; monatlich: letzter passender Tag.
  */
-export function lastDueSlot(c, now = new Date()) {
+export function lastDueSlot(c, now = clockNow()) {
   const { hour, weekday } = berlinClock(now);
   const day = today(now);
   const h = Math.min(23, Math.max(0, Number(c.stunde ?? 7)));
@@ -374,7 +382,7 @@ export function lastDueSlot(c, now = new Date()) {
  * Zeitplan-Regeln: laufen zum planmäßigen Zeitpunkt – oder beim nächsten Takt, wenn der Server zu dieser
  * Zeit aus war (höchstens 3 Tage rückwirkend, nie für Zeitpunkte vor der Freigabe).
  */
-export function runScheduledRules(now = new Date()) {
+export function runScheduledRules(now = clockNow()) {
   const rules = q.all(`SELECT * FROM rules WHERE active = 1 AND approved = 1 AND trigger_type = 'zeitplan'`);
   const limit = stamp(new Date(now.getTime() - 3 * 86_400_000));
   for (const r of rules) {
@@ -389,7 +397,7 @@ export function runScheduledRules(now = new Date()) {
 }
 
 /** Frist-Regeln: X Tage vor Fälligkeit passender Aufgaben (je Aufgabe und Frist genau einmal). */
-export function runDeadlineRules(now = new Date()) {
+export function runDeadlineRules(now = clockNow()) {
   const day = today(now);
   const rules = q.all(`SELECT * FROM rules WHERE active = 1 AND approved = 1 AND trigger_type = 'frist'`);
   for (const r of rules) {

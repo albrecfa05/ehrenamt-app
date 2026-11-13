@@ -58,6 +58,16 @@ sie als **ungeprüft** markiert. Satzung und Ordnungen nimmt ein Admin unter „
 | Gelb | nur im einzelnen Vorgang | Stammdaten, Bankdaten, Daten Minderjähriger |
 | Grün | dauerhaft | Satzung, Ordnungen, Vorlagen, öffentliche Spielpläne, Ergebnisse |
 
+**Zwei Schalter für gelbe Daten** (Adminpanel → Einstellungen): „lokal automatisch verarbeiten“
+(die Daten bleiben auf dem Server) und „an Microsoft 365 geben“ (SharePoint-Kopie, Postfach-Entwürfe –
+erst nach geklärter Auftragsverarbeitung). Der KI-Assistent bekommt nie gelbe Daten. Mehr in [EINRICHTUNG.md](EINRICHTUNG.md).
+
+## Ausprobieren ohne echte Daten
+
+Im **Vorstandsarbeit-Simulator** (`npm run simulator`) gibt es einen erfundenen Verein, einen Zeitraffer
+und Übungsszenarien wie „Schiedsrichter sagt ab“ oder „Neue Bankverbindung per Mail“. Gut für
+Schulungen neuer Amtsträger. Mehr in [SIMULATOR.md](SIMULATOR.md).
+
 ## Übergabe eines Amts
 
 Unter **Handbuch je Amt** entsteht aus Vorlagen, Jahreskalender und Lernprotokoll die Übergabedokumentation.

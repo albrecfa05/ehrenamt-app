@@ -10,6 +10,7 @@ import { audit, bad, nowIso, today } from '../util.js';
 import { touch } from './tasks.js';
 import { isOn, param } from './catalog.js';
 import { requestApproval } from './automation.js';
+import { gelbExtern } from '../privacy.js';
 
 export const ALLOWED_EXT = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.heic', '.txt', '.md', '.csv', '.eml', '.msg',
   '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.ods', '.zip', '.ics', '.json', '.rtf']);
@@ -47,6 +48,7 @@ export function maybeMirror(user, fileId, { force = false } = {}) {
   if (!isOn('ablage_spiegeln')) return null;
   const f = q.get('SELECT * FROM files WHERE id = ?', fileId);
   if (!f || f.remote_url) return null;
+  if (f.data_class === 'gelb' && !gelbExtern()) return null;   // gelbe Dateien verlassen den Server nur mit Schalter
   if (!force && f.data_class !== 'gruen' && param('ablage_spiegeln', 'nur_gruen')) return null;
   const p = mirrorPath(f);
   return requestApproval({ actionType: 'ablage_hochladen', payload: { kind: 'ablage_hochladen', area_id: f.area_id, file_id: f.id, path: p },

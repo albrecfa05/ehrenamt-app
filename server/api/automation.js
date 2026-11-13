@@ -7,6 +7,7 @@ import { ALLOWED_ACTIONS, BLOCKED_TERMS, assertActionAllowed } from '../guards.j
 import { buildOverview, decideApproval, MANY_RECIPIENTS, runRule, TRIGGERS, validateRule } from '../services/automation.js';
 import { audit, bad, int, LEVEL_LABEL, notFound, nowIso, parseJson, str } from '../util.js';
 import { newVersion } from './templates.js';
+import { gelbExtern, gelbLokal } from '../privacy.js';
 
 get('/api/automation/meta', () => ({
   triggers: TRIGGERS,
@@ -15,7 +16,8 @@ get('/api/automation/meta', () => ({
   blocked: ['Zahlungen', 'Lastschriften', 'Bankvorgänge', 'Bestellungen'],
   blockedTerms: BLOCKED_TERMS,
   manyRecipients: MANY_RECIPIENTS,
-  yellowAllowed: !!getSetting('datenschutz_gelb_freigegeben', false),
+  yellowAllowed: gelbLokal(),
+  yellowExternAllowed: gelbExtern(),
 }));
 
 const ruleView = (r) => ({ ...r, trigger_config: parseJson(r.trigger_config, {}), action_config: parseJson(r.action_config, {}) });

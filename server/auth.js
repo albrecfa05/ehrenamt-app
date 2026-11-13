@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import { q } from './db.js';
 import { config } from './config.js';
 import { HttpError, nowIso } from './util.js';
+import { clockNow, nowMs } from './clock.js';
 
 const SCRYPT = { N: 16384, r: 8, p: 1, keylen: 64 };
 export const COOKIE = 'tte_session';
@@ -94,13 +95,13 @@ export function userFromRequest(req) {
   const row = q.get(`SELECT s.id AS session_id, s.last_seen, s.created_at AS session_created, u.*
                      FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?`, sha(token));
   if (!row) return null;
-  const ageDays = (Date.now() - Date.parse(row.session_created)) / 86_400_000;
+  const ageDays = (nowMs() - Date.parse(row.session_created)) / 86_400_000;
   if (!row.active || ageDays > config.sessionDays) {
     q.run('DELETE FROM sessions WHERE id = ?', row.session_id);
     return null;
   }
   // last_seen höchstens minütlich schreiben
-  if (Date.now() - Date.parse(row.last_seen) > 60_000) q.run('UPDATE sessions SET last_seen = ? WHERE id = ?', nowIso(), row.session_id);
+  if (nowMs() - Date.parse(row.last_seen) > 60_000) q.run('UPDATE sessions SET last_seen = ? WHERE id = ?', nowIso(), row.session_id);
   delete row.pw_hash;
   return row;
 }

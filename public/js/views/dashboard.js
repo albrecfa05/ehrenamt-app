@@ -22,6 +22,8 @@ export default async function dashboard(el) {
   clear(el,
     pageHeader(`${greet}, ${first}`, d.totals.ueberfaellig ? `${d.totals.ueberfaellig} überfällig – am besten zuerst ansehen.` : 'Nichts überfällig. Gut so.',
       button('Übersicht als Bericht', async () => { const r = await api.post('/api/reports/overview', {}); location.hash = `#/automatisierung/berichte?id=${r.id}`; }, { iconName: 'chart', kind: 'ghost' })),
+    state.me.setup_open ? h('a', { class: 'notice notice-action', href: '#/einrichtung' }, icon('check', 16),
+      h('span', {}, h('strong', {}, 'Einrichtung noch nicht abgeschlossen. '), 'Der Assistent führt durch Bereiche, Ämter, Datenschutz, Verbindungen und Automatisierungen.'), h('span', { class: 'link' }, 'Weiter einrichten →')) : null,
     h('div', { class: 'stats' },
       stat(d.totals.mine, 'meine offenen', '#/aufgaben?owner=me'),
       stat(d.totals.ueberfaellig, 'überfällig', '#/aufgaben?due=ueberfaellig', 'tone-red'),

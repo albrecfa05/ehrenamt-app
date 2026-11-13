@@ -25,7 +25,31 @@ npm start
 ```
 
 Dann im Browser http://localhost:3000 öffnen. Beim ersten Aufruf legst du das erste
-Admin-Konto an (**Ersteinrichtung**). Weitere Konten vergibst du im **Adminpanel**.
+Admin-Konto an (**Ersteinrichtung**). Danach führt der **Einrichtungsassistent** durch alles
+Weitere: Bereiche, Personen und Ämter, Satzungsfristen, Datenschutz-Schalter, Verbindungen,
+Automatisierungen, Jahreskalender und Satzung (siehe [docs/EINRICHTUNG.md](docs/EINRICHTUNG.md)).
+
+### Leere App ausprobieren
+
+```bash
+npm run leer
+```
+
+Startet eine ganz leere App auf http://localhost:3003 (eigener Ordner `data-leer/`, ein
+Platzhalter-Bereich „Mein Verein“), um die Ersteinrichtung mit dem Assistenten durchzuspielen.
+`npm run leer -- --neu` beginnt wieder ganz von vorn.
+
+### Vorstandsarbeit-Simulator
+
+```bash
+npm run simulator
+```
+
+Eine eigene Instanz auf http://localhost:3002 mit einem **erfundenen Demo-Verein**
+(TTV Musterhausen, SV Beispieldorf, Bezirk Musterkreis), nachgebauten Diensten (Microsoft 365,
+click-TT, Claude), **Zeitraffer** und **16 Szenarien** aus typischen Vereinsproblemen.
+Weil nur Fantasiedaten im Spiel sind, sind dort alle Datenschutz-Schalter und Automatisierungen an.
+Zugänge in `data-simulator/SIMULATOR-ZUGANG.txt`. Details: [docs/SIMULATOR.md](docs/SIMULATOR.md).
 
 ### Erst einmal ausprobieren (Demo)
 
@@ -44,11 +68,16 @@ Die Demo startet auf http://localhost:3001 mit Beispieldaten in einem eigenen Or
 | `npm start` | App starten (Port 3000) |
 | `npm run dev` | Start mit automatischem Neustart bei Codeänderungen |
 | `npm run demo` | Demo mit Beispieldaten (Port 3001, eigener Datenordner) |
+| `npm run simulator` | Vorstandsarbeit-Simulator (Port 3002); `-- --neu` setzt zurück, `-- --echte-ki` nutzt den echten Claude |
+| `npm run leer` | Leere App für die Ersteinrichtung (Port 3003); `-- --neu` setzt zurück |
 | `npm test` | Automatische Tests, u. a. der Abnahmekriterien ABN-5 bis ABN-7 |
 | `npm run backup` | Sicherung von Datenbank und Ablage nach `backups/` |
 | `npm run passwort-zuruecksetzen -- <anmeldename>` | Notfall, wenn sich kein Admin mehr anmelden kann |
 
 ## Erste Schritte nach der Einrichtung
+
+Der Einrichtungsassistent (Navigation „Einrichtung“, solange er nicht abgeschlossen ist, sonst `#/einrichtung`)
+führt durch die Punkte 1–5, 7, 8 und 10. Die vollständige Liste:
 
 1. **Zweites Admin-Konto** anlegen (Adminpanel → Konten). Das vorläufige Passwort wird einmal angezeigt.
 2. **Ämter besetzen** (Adminpanel → Bereiche und Ämter): Inhaber und Vertretung je Amt.
@@ -73,6 +102,8 @@ Die Demo startet auf http://localhost:3001 mit Beispieldaten in einem eigenen Or
 | [docs/ARCHITEKTUR.md](docs/ARCHITEKTUR.md) | Aufbau, Datenmodell, Sicherheitskonzept, wie man die App erweitert |
 | [docs/BETRIEB.md](docs/BETRIEB.md) | Hosting, HTTPS, Sicherung, Updates, Umgebungsvariablen |
 | [docs/MICROSOFT-365.md](docs/MICROSOFT-365.md) | Postfach, Kalender und Ablage anbinden – Schritt für Schritt, mit engsten Rechten |
+| [docs/EINRICHTUNG.md](docs/EINRICHTUNG.md) | Leere App, Einrichtungsassistent, die beiden Datenschutz-Schalter |
+| [docs/SIMULATOR.md](docs/SIMULATOR.md) | Vorstandsarbeit-Simulator: Demo-Verein, Zeitraffer, Szenarien und ihre Quellen |
 | [docs/ANFORDERUNGEN.md](docs/ANFORDERUNGEN.md) | Jede Anforderung des Lastenhefts → Umsetzung → Test |
 | [docs/KI.md](docs/KI.md) | KI-Assistent: Automatisierungen mit Claude entwerfen – was übertragen wird, Kosten, Einrichtung |
 | [docs/IDEEN.md](docs/IDEEN.md) | Was man als Nächstes bauen könnte |

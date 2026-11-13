@@ -9,6 +9,7 @@ import { status as claudeStatus } from '../connectors/claude.js';
 import { bad, int, notFound, oneOf } from '../util.js';
 import { cleanRule, insertRule } from './automation.js';
 import { insertFilingRule } from './filing.js';
+import { clockNow, nowMs } from '../clock.js';
 
 setRuleValidator(cleanRule);
 
@@ -16,7 +17,7 @@ get('/api/ki/status', async ({ user }) => {
   requireAdmin(user);
   const s = await claudeStatus();
   const usage = q.get(`SELECT COUNT(*) AS n, COALESCE(SUM(input_tokens),0) AS i, COALESCE(SUM(output_tokens),0) AS o FROM ki_requests WHERE created_at >= ?`,
-    new Date(Date.now() - 30 * 86_400_000).toISOString());
+    new Date(nowMs() - 30 * 86_400_000).toISOString());
   return { ...s, active: isOn('ki_assistent'), last30: usage };
 });
 

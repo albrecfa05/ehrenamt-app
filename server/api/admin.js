@@ -5,6 +5,8 @@ import { q, tx, getSetting, setSetting } from '../db.js';
 import { checkPasswordStrength, hashPassword, randomToken, revokeAllSessions } from '../auth.js';
 import { audit, bad, int, notFound, nowIso, oneOf, str } from '../util.js';
 import { DEFAULT_STUFEN } from '../calc.js';
+import { seedAreaDefaults } from '../seed.js';
+import { gelbExtern, gelbLokal } from '../privacy.js';
 
 // ---------- Nutzer ----------
 
@@ -112,7 +114,9 @@ post('/api/areas', ({ body, user }) => {
   const key = str(body.key || name, { max: 60 }).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const color = /^#[0-9a-f]{6}$/i.test(body.color || '') ? body.color : '#2563eb';
   const r = q.run('INSERT INTO areas (key, name, type, color) VALUES (?, ?, ?, ?)', key, name, type, color);
-  audit(user, { entity: 'area', entityId: Number(r.lastInsertRowid), action: 'angelegt', summary: `Bereich „${name}“ angelegt` });
+  // Übliche Ämter und Jahreskalender gleich mit anlegen (abwählbar)
+  if (body.with_defaults !== false) seedAreaDefaults(Number(r.lastInsertRowid), type);
+  audit(user, { entity: 'area', entityId: Number(r.lastInsertRowid), action: 'angelegt', summary: `Bereich „${name}“ angelegt${body.with_defaults !== false ? ' (mit üblichen Ämtern und Jahreskalender)' : ''}` });
   return { id: Number(r.lastInsertRowid) };
 }, { auth: 'admin' });
 
@@ -173,14 +177,19 @@ export const SETTINGS = {
   antrag_frist_tage: { label: 'Antragsfrist vor der Versammlung (Tage, laut Satzung)', type: 'number', default: 7 },
   kuendigung_frist_monate: { label: 'Kündigungsfrist (Monate, laut Satzung)', type: 'number', default: 3 },
   budget_reserve: { label: 'Selbst gesetzte Reserve (€)', type: 'number', default: 20000 },
-  datenschutz_gelb_freigegeben: { label: 'Datenschutzfrage geklärt: Automatisierungen mit gelben Daten erlauben', type: 'boolean', default: false },
+  gelb_lokal: { label: 'Gelbe Daten lokal automatisch verarbeiten (bleiben auf diesem Server)', type: 'boolean', default: false, group: 'datenschutz' },
+  gelb_extern: { label: 'Gelbe Daten an Microsoft 365 geben (SharePoint-Kopie, Entwürfe im Postfach) – erst nach Klärung der Auftragsverarbeitung', type: 'boolean', default: false, group: 'datenschutz' },
   beitragsstufen: { label: 'Beitragsstufen', type: 'json', default: DEFAULT_STUFEN },
 };
 
-get('/api/settings', () => Object.fromEntries(Object.entries(SETTINGS).map(([k, s]) => [k, { ...s, value: getSetting(k, s.default) }])));
+get('/api/settings', () => Object.fromEntries(Object.entries(SETTINGS).map(([k, s]) => [k, { ...s, value: k === 'gelb_lokal' ? gelbLokal() : k === 'gelb_extern' ? gelbExtern() : getSetting(k, s.default) }])));
 
 put('/api/settings', ({ body, user }) => {
   const changed = [];
+  // Frühere Einstellung: gilt für beide Schalter
+  if (body && Object.hasOwn(body, 'datenschutz_gelb_freigegeben')) {
+    body = { ...body, gelb_lokal: !!body.datenschutz_gelb_freigegeben, gelb_extern: !!body.datenschutz_gelb_freigegeben };
+  }
   for (const [k, v] of Object.entries(body || {})) {
     const s = SETTINGS[k];
     if (!s) continue;

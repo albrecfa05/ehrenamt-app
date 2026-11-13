@@ -4,14 +4,38 @@
     {
       "name": "demo",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["--disable-warning=ExperimentalWarning", "scripts/demo.js"],
+      "runtimeArgs": [
+        "--disable-warning=ExperimentalWarning",
+        "scripts/demo.js"
+      ],
       "port": 3001
     },
     {
       "name": "app",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["--disable-warning=ExperimentalWarning", "server/index.js"],
+      "runtimeArgs": [
+        "--disable-warning=ExperimentalWarning",
+        "server/index.js"
+      ],
       "port": 3000
+    },
+    {
+      "name": "simulator",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--disable-warning=ExperimentalWarning",
+        "scripts/simulator.js"
+      ],
+      "port": 3002
+    },
+    {
+      "name": "leer",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--disable-warning=ExperimentalWarning",
+        "scripts/leer.js"
+      ],
+      "port": 3003
     }
   ]
 }
