@@ -596,6 +596,41 @@ const MIGRATIONS = [
     updated_at        TEXT NOT NULL
   );
   `,
+
+  // 5: Senden aus der App (durch einen Menschen), Mitgliederliste, Auslosungen
+  `
+  ALTER TABLE drafts ADD COLUMN sent_at TEXT;          -- von einem Menschen aus der App verschickt
+  ALTER TABLE drafts ADD COLUMN sent_count INTEGER;    -- Anzahl Empfänger (die Adressen selbst werden nicht gespeichert)
+
+  -- Mitgliederliste (gelbe Daten, nur mit Schalter „Gelb lokal“): nur was für Training, Auslosung und Aufstellung nötig ist
+  CREATE TABLE members (
+    id          INTEGER PRIMARY KEY,
+    area_id     INTEGER NOT NULL REFERENCES areas(id),
+    first_name  TEXT NOT NULL,
+    last_name   TEXT NOT NULL DEFAULT '',
+    birth_year  INTEGER,
+    gender      TEXT NOT NULL DEFAULT '',      -- m / w / d / leer
+    team        TEXT NOT NULL DEFAULT '',      -- Mannschaft oder Gruppe, z. B. "U15" oder "Herren II"
+    ttr         INTEGER,                       -- Spielstärke (Q-TTR), für Setzungen
+    active      INTEGER NOT NULL DEFAULT 1,
+    source      TEXT NOT NULL DEFAULT '',      -- z. B. "Import meinVerein 14.11.2026"
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+  );
+  CREATE INDEX idx_members_area ON members(area_id, active);
+
+  CREATE TABLE draws (
+    id          INTEGER PRIMARY KEY,
+    area_id     INTEGER REFERENCES areas(id),
+    title       TEXT NOT NULL,
+    mode        TEXT NOT NULL,                 -- paare | gruppen | ko | reihenfolge
+    seed        TEXT NOT NULL,                 -- Zufallswert: mit gleichem Wert ist das Ergebnis nachprüfbar
+    input       TEXT NOT NULL,                 -- Teilnehmende (JSON)
+    result      TEXT NOT NULL,                 -- Ergebnis (JSON)
+    created_by  INTEGER REFERENCES users(id),
+    created_at  TEXT NOT NULL
+  );
+  `,
 ];
 
 let db;

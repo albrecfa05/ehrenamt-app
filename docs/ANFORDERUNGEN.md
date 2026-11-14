@@ -147,3 +147,7 @@ Datenklasse, zugeordneten Textvorlagen und Rechnern angelegt. Neue Vorgangstypen
 | Eingang erfassen mit Anhängen (eingescannte Post, Fotos aus Messengern) | ABL-1, AUT-4 | Eingang → Eingang erfassen |
 | Zentrale Uhr (Zeitraffer im Simulator; in der echten App immer Echtzeit) | – | `server/clock.js` |
 | Anbindung TTV-Jugendplaner: Spielbetrieb Jugend lesen, Hinweise ohne Namen, Aufgaben für den Jugendwart mit Selbst-Erledigung, Kalender-Abo, Anmeldung per gemeinsamem Schlüssel | VOR-14, 5.7, DAT-2 | Seite „Spielbetrieb Jugend“; `docs/JUGENDPLANER.md`; `test/jugendplaner.test.js` |
+| **Abweichung vom Lastenheft (Wunsch des Vereins):** Entwürfe nach Prüfung direkt aus der App senden – nur durch Klick eines Menschen, Katalog-Schalter standardmäßig aus, Recht Mail.Send nötig, Adressen werden nicht gespeichert, Regeln können nie senden | AUT-14, AUT-7, AUT-9 | Entwurf → „Prüfen und senden“; `test/spieltag.test.js` |
+| Heimspieltage: mehrere Heimspiele eines Tages in einer Aufgabe, Jugendspiele ohne Schiedsrichter-Schritt, Spieldaten (Datum, Begegnungen, Halle, Aufbau, Rückmeldefrist) im Entwurf vorausgefüllt | VOR-16, 5.1 | `server/services/spieltag.js` |
+| Mitgliederliste (nur Name, Jahrgang, Mannschaft, Spielstärke; nur mit „Gelb lokal“) und Auslosung (Paare, Gruppen mit Setzung, KO-Baum, Reihenfolge; nachprüfbar per Zufallswert) | DAT-2 | Seite „Mitglieder & Auslosung“ |
+| „Auf einen Blick“ in jeder Aufgabe (Frist, Zuständigkeit, nächster Schritt, Spiele) und Bestätigungsmeldungen nach Speichern/Löschen | NFA-1 | Aufgabenansicht |

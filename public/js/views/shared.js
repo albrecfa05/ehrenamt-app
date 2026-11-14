@@ -9,6 +9,8 @@ import { folderInput } from './folders.js';
 
 export async function draftDialog(task, preselectId) {
   const templates = (await api.get('/api/text-templates')).filter(t => !t.area_id || t.area_id === task.area_id);
+  // Vorbelegung aus der Aufgabe (z. B. Spieltag, Gegner, Halle; bei Jugendspielen: kein Schiedsrichter)
+  const pre = (await api.get(`/api/tasks/${task.id}/draft-values`).catch(() => ({ values: {} }))).values || {};
   const tplSel = select([['', 'Vorlage wählen …'], ...templates.map(t => [t.id, `${t.category} · ${t.name}`])], preselectId || '');
   const varsBox = h('div', { class: 'form-grid' });
   const recipients = textarea({ rows: 2, placeholder: 'Nur Namen, durch Komma oder Zeile getrennt. Keine Adressen.' });
@@ -19,6 +21,8 @@ export async function draftDialog(task, preselectId) {
     varsBox.replaceChildren();
     preview.replaceChildren();
     if (!t) return;
+    values = Object.fromEntries(t.variables.filter(v => pre[v.name] !== undefined).map(v => [v.name, pre[v.name]]));
+    if (Object.keys(values).length) varsBox.append(h('p', { class: 'hint span-2' }, '✓ Aus der Aufgabe vorausgefüllt: ', Object.keys(values).join(', '), ' – bei Bedarf ändern.'));
     for (const v of t.variables.filter(v => !v.builtin)) {
       const i = input({ value: values[v.name] ?? '', placeholder: v.default || '' });
       i.addEventListener('input', () => { values[v.name] = i.value; updatePreview(); });
@@ -79,6 +83,34 @@ export function draftCard(d, onChange) {
       onChange?.();
     } catch (e) { errorToast(e); }
   };
+  // Prüfen und direkt aus der App senden (nur wenn im Katalog eingeschaltet)
+  const send = async () => {
+    try { await save(); } catch (e) { return errorToast(e); }
+    const to = textarea({ rows: 2, placeholder: 'adresse@beispiel.de, weitere@beispiel.de' });
+    const checked = h('input', { type: 'checkbox' });
+    const ok = await modal({
+      title: 'Prüfen und senden', wide: true,
+      body: h('div', {},
+        h('div', { class: 'send-preview' }, h('div', { class: 'preview-subject' }, subject.value || '(ohne Betreff)'), h('pre', { class: 'preview-body' }, body.value)),
+        rec.value.trim() ? h('p', { class: 'hint' }, `Laut Entwurf an: ${rec.value}`) : null,
+        field('An (E-Mail-Adressen)', to, 'Mehrere mit Komma. Die Adressen werden nur für diesen Versand benutzt und nicht gespeichert.'),
+        h('label', { class: 'check mt' }, checked, h('span', {}, 'Ich habe Text, Anrede und Empfänger geprüft.')),
+        h('p', { class: 'small muted' }, 'Gesendet wird aus dem Funktionspostfach des Bereichs. Die Vorgangsnummer kommt in den Betreff, damit Antworten der Aufgabe zugeordnet werden.')),
+      actions: [{ label: 'Abbrechen', kind: 'ghost' }, { label: 'Jetzt senden', kind: 'primary', onClick: async () => {
+        if (!checked.checked) throw new Error('Bitte bestätigen, dass du alles geprüft hast.');
+        const list = to.value.split(/[\s,;]+/).filter(Boolean);
+        const payload = { to: to.value, subject: subject.value, body: body.value, geprueft: true };
+        if (list.length >= 5) {
+          const yes = await modal({ title: `An ${list.length} Empfänger senden?`, body: h('ol', { class: 'recipients' }, list.map(a => h('li', {}, a))),
+            actions: [{ label: 'Abbrechen', kind: 'ghost', value: false }, { label: `Ja, an alle ${list.length}`, kind: 'primary', value: true }] });
+          if (!yes) throw new Error('Nicht gesendet.');
+          Object.assign(payload, { confirmRecipients: true, recipientCount: new Set(list.map(a => a.toLowerCase())).size });
+        }
+        return api.post(`/api/drafts/${d.id}/send`, payload);
+      } }],
+    });
+    if (ok) { toast(`Gesendet an ${ok.count} Empfänger aus ${ok.mailbox}`); onChange?.(); }
+  };
   const mailto = () => {
     save().catch(() => {});
     location.href = `mailto:?subject=${encodeURIComponent(subject.value)}&body=${encodeURIComponent(body.value)}`;
@@ -87,7 +119,7 @@ export function draftCard(d, onChange) {
     h('div', { class: 'draft-head' },
       h('div', {}, h('strong', {}, d.template_name || 'Entwurf'), d.template_version ? h('span', { class: 'badge' }, `Vorlage v${d.template_version}`) : null,
         d.rule_name ? h('span', { class: 'badge badge-level' }, `aus Regel „${d.rule_name}“`) : null),
-      h('small', { class: 'muted' }, d.status === 'uebernommen' ? `übernommen ${fmtDateTime(d.taken_at)}` : d.status === 'verworfen' ? 'verworfen' : fmtDateTime(d.created_at))),
+      h('small', { class: 'muted' }, d.sent_at ? `✉ aus der App gesendet ${fmtDateTime(d.sent_at)} an ${d.sent_count} Empfänger` : d.status === 'uebernommen' ? `übernommen ${fmtDateTime(d.taken_at)}` : d.status === 'verworfen' ? 'verworfen' : fmtDateTime(d.created_at))),
     (d.warnings || []).length ? h('ul', { class: 'warnings' }, d.warnings.map(w => h('li', {}, w))) : null,
     field('Betreff', subject), field('Text', body), field('Empfänger (Namen)', rec),
     editable ? h('div', { class: 'btn-row' },
@@ -95,7 +127,7 @@ export function draftCard(d, onChange) {
       button('Kopieren', () => copyText(`${subject.value}\n\n${body.value}`), { kind: 'ghost', iconName: 'copy' }),
       button('Im Mailprogramm öffnen', mailto, { kind: 'ghost', iconName: 'external' }),
       h('span', { class: 'spacer' }),
-      button('Verwerfen', async () => { await api.post(`/api/drafts/${d.id}/discard`); onChange?.(); }, { kind: 'ghost' }),
+      button('Verwerfen', async () => { try { await api.post(`/api/drafts/${d.id}/discard`); toast('Entwurf verworfen'); onChange?.(); } catch (e) { errorToast(e); } }, { kind: 'ghost' }),
       autoOn('postfach_entwuerfe') ? button('Ins Postfach legen', async () => {
         try {
           await save();
@@ -105,7 +137,8 @@ export function draftCard(d, onChange) {
           onChange?.();
         } catch (e) { errorToast(e); }
       }, { kind: 'ghost', iconName: 'inbox', title: 'Stufe 3: als Entwurf ins Funktionspostfach – nach Freigabe' }) : null,
-      button('Übernehmen', take, { kind: 'primary', iconName: 'check', title: 'Du verschickst selbst; die App protokolliert die Übernahme.' })) :
+      autoOn('mail_senden') ? button('Prüfen und senden', send, { kind: 'primary', iconName: 'mail', title: 'Nach deiner Prüfung direkt aus dem Funktionspostfach senden' }) : null,
+      button('Übernehmen', take, { kind: autoOn('mail_senden') ? 'ghost' : 'primary', iconName: 'check', title: 'Du verschickst selbst; die App protokolliert die Übernahme.' })) :
     d.remote_id ? h('div', { class: 'small muted' }, `Liegt als Entwurf im Postfach ${d.mailbox}. Antworten werden der Aufgabe automatisch zugeordnet.`) : null);
 }
 

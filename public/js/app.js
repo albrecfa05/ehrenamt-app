@@ -26,6 +26,7 @@ import search from './views/search.js';
 import sponsors from './views/sponsors.js';
 import setup from './views/setup.js';
 import spielbetrieb from './views/spielbetrieb.js';
+import mitglieder from './views/mitglieder.js';
 
 const ROUTES = [
   ['start', dashboard], ['aufgaben', tasks], ['ideen', (el, p) => tasks(el, { ...p, ideas: true })], ['aufgabe/:id', task],
@@ -34,7 +35,7 @@ const ROUTES = [
   ['ablage', files], ['auskunft', knowledge], ['auskunft/:tab', knowledge], ['handbuch', handbook],
   ['automatisierung', automation], ['automatisierung/:tab', automation], ['kennzahlen', metrics], ['protokoll', auditView],
   ['admin', admin], ['admin/:tab', admin], ['sponsoren', sponsors], ['konto', account], ['hilfe', help], ['hilfe/:tab', help], ['suche', search],
-  ['einrichtung', setup], ['spielbetrieb', spielbetrieb],
+  ['einrichtung', setup], ['spielbetrieb', spielbetrieb], ['mitglieder', mitglieder],
 ];
 
 const NAV = [
@@ -42,6 +43,7 @@ const NAV = [
     ['start', 'Übersicht', 'home'], ['aufgaben', 'Aufgaben', 'list'], ['eingang', 'Eingang', 'inbox', () => state.me?.counts.inbox],
     ['entwuerfe', 'Entwürfe', 'mail'], ['kalender', 'Kalender', 'calendar'], ['ideen', 'Ideenspeicher', 'bulb'], ['sponsoren', 'Sponsoren', 'handshake'],
     ['spielbetrieb', 'Spielbetrieb Jugend', 'layers', null, () => state.me?.jugendplaner],
+    ['mitglieder', 'Mitglieder & Auslosung', 'user'],
   ]],
   ['Vorgänge und Wissen', [
     ['vorgaenge', 'Vorgangsvorlagen', 'flow'], ['texte', 'Textvorlagen', 'text'], ['ablage', 'Ablage', 'folder'],

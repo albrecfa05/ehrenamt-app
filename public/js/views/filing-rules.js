@@ -49,7 +49,7 @@ export default async function filingRules(el) {
       h('div', { class: 'step-edit-actions' },
         iconButton('chevronLeft', () => move(i, -1), 'nach oben'), iconButton('chevronRight', () => move(i, 1), 'nach unten'),
         iconButton('edit', () => edit(r), 'Bearbeiten'),
-        iconButton('trash', async () => { if (await confirmDialog(`Regel „${r.name}“ löschen?`, { danger: true, ok: 'Löschen' })) { await api.del(`/api/filing-rules/${r.id}`); reload(); } }, 'Löschen')));
+        iconButton('trash', async () => { if (await confirmDialog(`Regel „${r.name}“ löschen?`, { danger: true, ok: 'Löschen' })) { await api.del(`/api/filing-rules/${r.id}`); toast(`Regel „${r.name}“ gelöscht`); reload(); } }, 'Löschen')));
   };
 
   async function edit(r = {}) {

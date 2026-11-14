@@ -5,7 +5,9 @@
 //   ✔ Entwürfe im Postfach ANLEGEN (nur nach Freigabe, Stufe 3)     → Mensch verschickt in Outlook (AUT-14)
 //   ✔ Termine im Kalender des Funktionspostfachs anlegen (Freigabe) → Stufe 3
 //   ✔ Dateien in SharePoint/OneDrive hochladen (Freigabe)          → gemeinsame Ablage (DAT-6)
-//   ✘ Mails verschicken: Es gibt keine Funktion dafür (kein /sendMail, kein /send).
+//   ✔ eine Mail VERSCHICKEN – nur wenn ein Mensch einen geprüften Entwurf mit „Senden“ abschickt
+//     (Katalog „Mails aus der App senden“, Standard: aus; braucht das Recht Mail.Send). Regeln und
+//     Automatiken können diese Funktion nie aufrufen.
 //   ✘ Mails im Postfach verändern, verschieben oder löschen.
 //
 // Zugangsdaten stehen nur in der .env (M365_TENANT_ID, M365_CLIENT_ID, M365_CLIENT_SECRET).
@@ -159,6 +161,17 @@ export async function fetchAttachments(address, messageId) {
 export async function createDraft(address, { subject, body }) {
   const m = await graph('POST', `/users/${enc(address)}/messages`, { body: { subject, body: { contentType: 'Text', content: body }, toRecipients: [] } });
   return { id: m.id, conversation_id: m.conversationId || null, webLink: m.webLink || null };
+}
+
+/**
+ * Verschickt eine Mail aus einem Funktionspostfach. Wird ausschließlich von /api/drafts/:id/send aufgerufen,
+ * also nach Prüfung und Klick eines Menschen. to: Liste von Adressen (werden nicht gespeichert).
+ */
+export async function sendMail(address, { subject, body, to }) {
+  await graph('POST', `/users/${enc(address)}/sendMail`, {
+    body: { message: { subject, body: { contentType: 'Text', content: body }, toRecipients: to.map(a => ({ emailAddress: { address: a } })) }, saveToSentItems: true },
+  });
+  return { ok: true };
 }
 
 /** Termin im Kalender eines Postfachs. Datum JJJJ-MM-TT, Uhrzeit HH:MM oder leer (ganztägig). */

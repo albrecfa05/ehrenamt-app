@@ -79,3 +79,12 @@ bleiben dann im Katalog ausgeschaltet.
 Ohne Microsoft 365 funktioniert der Eingang weiter über eingefügten Text und `.eml`-Dateien (aus Outlook, Thunderbird
 oder Webmail gespeichert, inkl. Anhängen). Eine IMAP-Anbindung für andere Anbieter wäre eine Erweiterung nach demselben
 Muster (`server/connectors/`).
+
+
+## Optional: Mails direkt aus der App senden
+
+Wer Entwürfe nach Prüfung direkt aus der App verschicken will (Adminpanel → Automatisierungen → „Mails nach Prüfung
+direkt aus der App senden“), gibt der App-Registrierung zusätzlich das Anwendungsrecht **Mail.Send** und begrenzt es
+wie die anderen Rechte per Exchange-Richtlinie auf die Funktionspostfächer. Gesendet wird nur, wenn ein Mensch den
+Entwurf prüft, die Adressen einträgt und auf „Jetzt senden“ klickt – Regeln und Automatiken können nie senden.
+Die Adressen werden nicht gespeichert, im Protokoll stehen nur Anzahl und Domains.

@@ -113,3 +113,15 @@ test('Fehlende Dateien: kein Absturz, Reparatur stellt den Vereinsordner wieder 
   assert.equal(r.status, 200);
   assert.equal(W().docs.length, 9);
 });
+
+test('Senden aus der App landet im Ordner „Gesendet“ der Vereinswelt', async () => {
+  const areas = (await mia.get('/api/areas')).data;
+  const ttv = areas.find(a => a.name === 'TTV Musterhausen').id;
+  const t = await mia.post('/api/tasks', { area_id: ttv, title: 'Rückfrage an die Staffel' });
+  const tpl = (await mia.get('/api/text-templates')).data.find(x => x.key === 'T-VERLEGUNG');
+  const dr = await mia.post(`/api/tasks/${t.data.id}/drafts`, { template_id: tpl.id });
+  const r = await mia.post(`/api/drafts/${dr.data.id}/send`, { to: 'staffel@tt-musterkreis.example', geprueft: true });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  const sentBox = (await w.get(`/api/postfach?mailbox=${encodeURIComponent(MAILBOX.ttv)}&folder=sent`)).data;
+  assert.ok(sentBox.some(m => m.to.includes('staffel@') && m.subject.startsWith(`[#${t.data.id}]`)));
+});

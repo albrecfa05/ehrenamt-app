@@ -25,6 +25,7 @@ import './api/ki.js';
 import './api/filing.js';
 import './api/setup.js';
 import './api/jugendplaner.js';
+import './api/members.js';
 
 /**
  * opts.areas: eigene Startbereiche statt der vorgegebenen (leere App, Simulator).

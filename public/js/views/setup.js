@@ -65,7 +65,7 @@ const STEP_VIEWS = {
         return h('tr', { class: a.active ? '' : 'inactive' }, h('td', {}, n), h('td', {}, a.type === 'bezirk' ? 'Bezirk' : 'Verein'), h('td', {}, c),
           h('td', { class: 'actions' }, iconButton('trash', async () => {
             if (!(await confirmDialog(`Bereich „${a.name}“ entfernen? Das geht nur, solange er leer ist.`, { danger: true, ok: 'Entfernen' }))) return;
-            try { await api.del(`/api/areas/${a.id}`); await loadState(); await refresh(); } catch (e) { errorToast(e); }
+            try { await api.del(`/api/areas/${a.id}`); toast(`Bereich „${a.name}“ entfernt`); await loadState(); await refresh(); } catch (e) { errorToast(e); }
           }, 'Leeren Bereich entfernen')));
       }))),
       h('div', { class: 'inline-form mt' }, name, type, button('Bereich hinzufügen', async () => {

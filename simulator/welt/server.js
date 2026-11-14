@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { clockNow } from '../../server/clock.js';
 import { W, save, fileMeta, readFile, log } from './zustand.js';
-import { handleDienst } from './dienste.js';
+import { handleDienst, setOnSent } from './dienste.js';
 import { handleJugendplaner, jpParents } from './jugendplaner.js';
 import { scanToMail } from './kanaele.js';
 import { MAILBOX, PEOPLE, TEAMS, VEREIN } from './verein.js';
@@ -70,6 +70,7 @@ function vorschau(f, buf) {
 export function createWeltServer(opts) {
   // opts.base wird bei jedem Aufruf gelesen (in Tests ist der Port erst nach dem Start bekannt)
   const { appUrl } = opts;
+  setOnSent(() => { react(); evaluate(); });
   return http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://welt');
     const json = (o, s = 200) => { res.writeHead(s, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(o)); };

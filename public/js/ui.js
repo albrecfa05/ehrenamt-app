@@ -205,6 +205,8 @@ export function levelBadge(level, max) {
 let toastHost;
 export function toast(message, type = 'ok', ms = 3500) {
   if (!toastHost) { toastHost = h('div', { class: 'toasts', role: 'status', 'aria-live': 'polite' }); document.body.append(toastHost); }
+  // Gleiche Meldung nicht doppelt zeigen (z. B. Dialog und Seite melden beide „Gespeichert“)
+  if ([...toastHost.children].some(c => !c.classList.contains('out') && c.textContent === message)) return;
   const t = h('div', { class: `toast toast-${type}` }, icon(type === 'error' ? 'alert' : 'check', 16), h('span', {}, message));
   toastHost.append(t);
   setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, ms);
@@ -217,6 +219,8 @@ export function errorToast(err) { toast(err?.message || String(err), 'error', 60
  * Öffnet einen Dialog. actions: [{ label, kind: 'primary'|'danger'|'ghost', value, onClick? }]
  * onClick darf ein Promise liefern; bei Fehler bleibt der Dialog offen. Ergebnis: value der Aktion oder null.
  */
+const DONE = { Löschen: 'Gelöscht', Entfernen: 'Entfernt', Verwerfen: 'Verworfen', Ersetzen: 'Ersetzt' };
+
 export function modal({ title, body, actions = [{ label: 'Schließen', value: null, kind: 'ghost' }], wide = false, onOpen }) {
   return new Promise((resolve) => {
     const prev = document.activeElement;
@@ -231,7 +235,12 @@ export function modal({ title, body, actions = [{ label: 'Schließen', value: nu
         b.disabled = true;
         try {
           const r = await a.onClick();
-          if (r !== false) close(r === undefined ? (a.value ?? true) : r);
+          if (r !== false) {
+            close(r === undefined ? (a.value ?? true) : r);
+            // Kurze Bestätigung nach Löschen und Speichern (abschaltbar mit toast: false, eigener Text mit toast: '…')
+            const msg = a.toast === false ? null : a.toast || (a.kind === 'danger' ? DONE[a.label] || `${a.label}: erledigt` : a.label === 'Speichern' ? 'Gespeichert' : null);
+            if (msg) toast(msg);
+          }
         } catch (err) {
           errBox.textContent = err.message; errBox.hidden = false;
         } finally { b.disabled = false; }

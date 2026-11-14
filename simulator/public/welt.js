@@ -247,7 +247,7 @@ async function viewM365() {
         row('Kalender-Postfach', m.info.kalender), row('Ablageort (SharePoint)', m.info.ablage_ziel)))),
     h('h2', {}, 'Was die App im Tenant getan hat'),
     h('p', { class: 'muted small' }, `Entwürfe liegen im jeweiligen Postfach unter „Entwürfe“ (${m.drafts}). Verschickt wird nur von Hand.`),
-    h('section', { class: 'card' }, m.aussen.length ? h('ul', { class: 'log' }, m.aussen.map(a => h('li', {}, h('time', {}, dt(a.at)), h('span', {}, { entwurf: '✉️ ', termin: '📅 ', ablage: '📁 ', claude: '🤖 ' }[a.kind] || '', a.text, a.file ? ' · ' : '', a.file ? h('a', { href: `/datei/${a.file}` }, 'Datei') : null)))) : h('p', { class: 'muted' }, 'Noch nichts.')));
+    h('section', { class: 'card' }, m.aussen.length ? h('ul', { class: 'log' }, m.aussen.map(a => h('li', {}, h('time', {}, dt(a.at)), h('span', {}, { entwurf: '✉️ ', gesendet: '📤 ', termin: '📅 ', ablage: '📁 ', claude: '🤖 ' }[a.kind] || '', a.text, a.file ? ' · ' : '', a.file ? h('a', { href: `/datei/${a.file}` }, 'Datei') : null)))) : h('p', { class: 'muted' }, 'Noch nichts.')));
 }
 
 // ---------- Jugendplaner ----------

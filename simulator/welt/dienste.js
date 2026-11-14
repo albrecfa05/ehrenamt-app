@@ -98,6 +98,16 @@ function graph(req, url, raw, json) {
     log(`Die App hat einen Entwurf ins Postfach ${mb} gelegt: „${b.subject}“.`);
     return json({ id, conversationId: `conv-${id}`, webLink: `http://localhost/vereinswelt/#postfach/${id}` }, 201);
   }
+  if (req.method === 'POST' && /\/sendMail$/.test(p)) {
+    const b = JSON.parse(raw.toString('utf8') || '{}');
+    const msg = b.message || {};
+    const to = (msg.toRecipients || []).map(r => r.emailAddress?.address).filter(Boolean).join(', ');
+    W().mails.push({ id: newId('m'), mailbox: mb, folder: 'sent', from: mb, fromName: W().mailboxes[mb], to, subject: msg.subject || '', body: msg.body?.content || '', received: clockNow().toISOString(), read: true, conv: null, source: 'app', attachments: [] });
+    aussen('gesendet', `Mail aus der App gesendet (${mb} → ${to}): „${msg.subject}“`);
+    log(`✉ Die App hat aus ${mb} an ${to} gesendet: „${msg.subject}“`, 'mail');
+    if (onSent) setTimeout(onSent, 0);
+    return json({}, 202);
+  }
   if (req.method === 'POST' && /\/events$/.test(p)) {
     const b = JSON.parse(raw.toString('utf8') || '{}');
     aussen('termin', `Termin im Kalender von ${mb}: „${b.subject}“ am ${String(b.start?.dateTime || '').slice(0, 10)}`, { mailbox: mb, title: b.subject, date: String(b.start?.dateTime || '').slice(0, 10) });
@@ -112,6 +122,10 @@ function graph(req, url, raw, json) {
   if (/\/drive$/.test(p)) return json({ name: 'Vereinsablage (SharePoint der Vereinswelt)', webUrl: 'https://ttvmusterhausen.sharepoint.example/' });
   return json({ error: { code: 'NotImplemented', message: `In der Vereinswelt nicht nachgebaut: ${req.method} ${p}` } }, 404);
 }
+
+let onSent = null;
+/** Wird aufgerufen, nachdem die App eine Mail gesendet hat (die Welt kann darauf reagieren). */
+export function setOnSent(fn) { onSent = fn; }
 
 /** Behandelt eine Anfrage an die Nachbau-Dienste. Gibt false zurück, wenn sie nicht hierher gehört. */
 export async function handleDienst(req, res, url) {

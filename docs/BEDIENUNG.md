@@ -62,6 +62,16 @@ sie als **ungeprüft** markiert. Satzung und Ordnungen nimmt ein Admin unter „
 (die Daten bleiben auf dem Server) und „an Microsoft 365 geben“ (SharePoint-Kopie, Postfach-Entwürfe –
 erst nach geklärter Auftragsverarbeitung). Der KI-Assistent bekommt nie gelbe Daten. Mehr in [EINRICHTUNG.md](EINRICHTUNG.md).
 
+## Heimspieltag, Senden, Auslosen
+
+- **Heimspieltag:** Spielen mehrere eigene Mannschaften am selben Tag zu Hause, entsteht eine gemeinsame Aufgabe
+  „Heimspieltag …“ mit allen Spielen. Bei reinen Jugendspieltagen ist der Schritt „Schiedsrichter klären“ schon erledigt.
+  Der Aufruf an die Helfer kennt Datum, Begegnungen, Halle, Aufbauzeit und Rückmeldefrist – du ergänzt nur noch die Namen.
+- **Prüfen und senden:** Ist es eingeschaltet, schickst du einen Entwurf nach Prüfung direkt aus dem Funktionspostfach,
+  ohne in Outlook zu wechseln. Die Vorgangsnummer kommt in den Betreff, damit Antworten zugeordnet werden.
+- **Mitglieder & Auslosung:** Mitgliederliste importieren (nur mit Schalter „Gelb lokal“) oder Namen einfügen,
+  dann Trainingspaare, Doppel, Gruppen oder einen KO-Baum auslosen. Der Zufallswert macht jede Auslosung nachprüfbar.
+
 ## Ausprobieren ohne echte Daten
 
 Im **Vorstandsarbeit-Simulator** (`npm run simulator`) gibt es einen erfundenen Verein mit Postfächern,

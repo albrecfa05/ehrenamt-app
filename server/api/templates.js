@@ -11,6 +11,9 @@ import { CALCULATORS } from '../calc.js';
 import { audit, bad, forbidden, int, notFound, nowIso, oneOf, parseJson, str } from '../util.js';
 import { cleanRecipients } from './tasks.js';
 import { touch } from '../services/tasks.js';
+import { isOn } from '../services/catalog.js';
+import { gelbExtern } from '../privacy.js';
+import * as m365 from '../connectors/m365.js';
 
 /** Legt den alten Stand ab, erhöht die Version und schreibt ins Update-Fenster. */
 export function newVersion(user, entity, row, note, title) {
@@ -234,6 +237,40 @@ post('/api/drafts/:id/take', ({ user, params, body }) => {
   audit(user, { entity: d.task_id ? 'task' : 'draft', entityId: d.task_id || d.id, areaId: d.area_id, action: 'entwurf_uebernommen', summary, detail: { draft_id: d.id, recipients } });
   if (d.task_id) touch(d.task_id, { firstWork: true });
   return { ok: true };
+});
+
+// Ein Mensch prüft den Entwurf und verschickt ihn direkt aus der App (Katalog „Mails aus der App senden“).
+// Nie aus einer Regel heraus: Diese Schnittstelle braucht eine angemeldete Person und deren Klick.
+post('/api/drafts/:id/send', async ({ user, params, body }) => {
+  const d = loadDraft(user, int(params.id));
+  if (d.status !== 'entwurf') throw bad('Dieser Entwurf ist nicht mehr offen.');
+  if (!isOn('mail_senden')) throw bad('„Mails aus der App senden“ ist nicht eingeschaltet (Adminpanel → Automatisierungen) oder Microsoft 365 ist nicht verbunden.');
+  if (body.geprueft !== true) throw bad('Bitte bestätigen, dass du Text und Empfänger geprüft hast.');
+  const task = d.task_id ? q.get('SELECT * FROM tasks WHERE id = ?', d.task_id) : null;
+  if (task && user.role !== 'admin' && ![task.owner_id, task.deputy_id].includes(user.id)) throw forbidden('Nur die verantwortliche Person, die Vertretung oder ein Admin verschickt.');
+  if (task?.data_class === 'gelb' && !gelbExtern()) throw bad('Der Vorgang enthält gelbe Daten. Dafür muss „Gelbe Daten an Microsoft 365 geben“ eingeschaltet sein.');
+  const to = [...new Set(String(body.to || '').split(/[\s,;]+/).map(s => s.trim().toLowerCase()).filter(Boolean))];
+  if (!to.length) throw bad('Bitte mindestens eine Empfängeradresse eintragen.');
+  const badAddr = to.filter(a => !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(a));
+  if (badAddr.length) throw bad(`Keine gültige Adresse: ${badAddr.join(', ')}`);
+  if (to.length >= MANY_RECIPIENTS && !(body.confirmRecipients === true && body.recipientCount === to.length)) {
+    throw bad(`Diese Mail geht an ${to.length} Empfänger. Bitte die Liste ausdrücklich bestätigen (AUT-7).`, { needsRecipientConfirmation: true, count: to.length });
+  }
+  const subject0 = str(body.subject ?? d.subject, { max: 500 });
+  const text = str(body.body ?? d.body, { max: 50_000 });
+  // Vorgangsnummer im Betreff, damit Antworten der Aufgabe zugeordnet werden
+  const subject = task && !subject0.includes(`[#${task.id}]`) ? `[#${task.id}] ${subject0}` : subject0;
+  const mb = m365.mailboxForArea(d.area_id);
+  if (!mb) throw bad('Kein Funktionspostfach eingetragen (Adminpanel → Verbindungen).');
+  try { await m365.sendMail(mb, { subject, body: text, to }); }
+  catch (err) { throw bad(`Senden fehlgeschlagen: ${err.message}${/403|Access is denied|Authorization/i.test(err.message) ? ' – fehlt der App-Registrierung das Recht Mail.Send?' : ''}`); }
+  const now = nowIso();
+  q.run(`UPDATE drafts SET status = 'uebernommen', subject = ?, body = ?, taken_at = ?, taken_by = ?, sent_at = ?, sent_count = ?, mailbox = ? WHERE id = ?`, subject, text, now, user.id, now, to.length, mb, d.id);
+  const domains = [...new Set(to.map(a => a.split('@')[1]))];
+  audit(user, { entity: d.task_id ? 'task' : 'draft', entityId: d.task_id || d.id, areaId: d.area_id, action: 'mail_gesendet',
+    summary: `Mail „${subject}“ von ${user.name} nach Prüfung aus der App gesendet (Postfach ${mb}, ${to.length} Empfänger, Domains: ${domains.join(', ')})`, detail: { draft_id: d.id, count: to.length } });
+  if (d.task_id) touch(d.task_id, { firstWork: true });
+  return { ok: true, mailbox: mb, count: to.length };
 });
 
 post('/api/drafts/:id/discard', ({ user, params }) => {

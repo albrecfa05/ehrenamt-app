@@ -6,6 +6,7 @@ import { addDays, audit, bad, formatDateDe, nowIso, today } from '../util.js';
 import { createTask, notify } from './tasks.js';
 import { isOn, param } from './catalog.js';
 import { fetchIcs, isHomeGame } from '../connectors/ics.js';
+import * as spieltag from './spieltag.js';
 import { getSetting as gs } from '../db.js';
 
 const admins = () => q.all(`SELECT id FROM users WHERE active = 1 AND role = 'admin'`).map(u => u.id);
@@ -49,13 +50,24 @@ export async function syncFeed(feed, user = null) {
       }
       if (home && feed.create_tasks && isOn('heimspiel_aufgaben') && e.date >= d && addDays(e.date, -feed.lead_days) <= d) {
         const key = `spielplan:${feed.id}:${e.uid}`;
-        if (!q.get('SELECT 1 FROM tasks WHERE parent_source = ?', key)) {
-          createTask(user, {
-            area_id: feed.area_id, title: `Heimspiel ${formatDateDe(e.date)}${e.time ? ' ' + e.time : ''}: ${e.summary}`,
-            description: `Aus dem Spielplan „${feed.name}“.${e.location ? `\nOrt: ${e.location}` : ''}`,
-            due_date: e.date, template_id: feed.template_id || null, owner_id: feed.owner_id || null, channel: 'jahreskalender',
-          }, { source: key });
-          tasks++;
+        const ev = q.get('SELECT * FROM events WHERE feed_id = ? AND external_uid = ?', feed.id, e.uid);
+        const existing = q.get('SELECT id FROM tasks WHERE parent_source = ?', key);
+        if (existing) {
+          if (ev && !ev.task_id) { spieltag.linkEvent(ev.id, existing.id); spieltag.refreshTask(existing.id); }
+        } else if (ev && !ev.task_id) {
+          // Mehrere Heimspiele an einem Tag: eine gemeinsame Heimspieltag-Aufgabe statt mehrerer
+          const sameDay = spieltag.openTaskForDay(feed.area_id, e.date);
+          if (sameDay) { spieltag.linkEvent(ev.id, sameDay.id); spieltag.refreshTask(sameDay.id); }
+          else {
+            const id = createTask(user, {
+              area_id: feed.area_id, title: `Heimspiel ${formatDateDe(e.date)}${e.time ? ' ' + e.time : ''}: ${e.summary}`,
+              description: `Aus dem Spielplan „${feed.name}“.${e.location ? `\nOrt: ${e.location}` : ''}`,
+              due_date: e.date, template_id: feed.template_id || null, owner_id: feed.owner_id || null, channel: 'jahreskalender',
+            }, { source: key });
+            spieltag.linkEvent(ev.id, id);
+            spieltag.refreshTask(id);
+            tasks++;
+          }
         }
       }
     }

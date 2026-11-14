@@ -71,6 +71,9 @@ export const CATALOG = [
     params: [] },
 
   // ----- Kalender und Ablage in Microsoft 365 -----
+  { key: 'mail_senden', group: 'Postfach (Microsoft 365)', label: 'Mails nach Prüfung direkt aus der App senden', level: 3, default: false, requires: ['m365'], source: 'Stufe 3, AUT-7, AUT-14 (Erweiterung)',
+    description: 'Ein Mensch prüft den Entwurf, trägt die Empfängeradressen ein und klickt „Senden“ – ohne in Outlook zu wechseln. Regeln und Automatiken können nie senden. Die Adressen werden nicht gespeichert, nur ihre Anzahl. Braucht in der App-Registrierung zusätzlich das Recht Mail.Send (docs/MICROSOFT-365.md).',
+    params: [] },
   { key: 'm365_kalender', group: 'Kalender und Ablage (Microsoft 365)', label: 'Termine in den Outlook-Kalender eintragen', level: 3, default: false, requires: ['m365'], source: 'Stufe 3, DAT-5',
     description: 'Freigegebene Termine werden zusätzlich im Kalender des Funktionspostfachs eingetragen. Jede Eintragung braucht eine Freigabe.',
     params: [] },

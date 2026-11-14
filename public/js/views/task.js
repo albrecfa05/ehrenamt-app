@@ -47,7 +47,7 @@ export default async function taskView(el, { id }) {
             if (!who.value.trim()) throw new Error('Bitte angeben, wer etwas schuldet.');
             await api.put(`/api/tasks/${t.id}`, { status: 'wartet', waiting_who: who.value.trim(), waiting_what: what.value.trim() });
           } }] });
-        if (ok) reload();
+        if (ok) { toast('Status: wartet auf Zulieferung'); reload(); }
         return;
       }
       if (s === 'erledigt') {
@@ -66,7 +66,7 @@ export default async function taskView(el, { id }) {
         return;
       }
       if (s === 'verworfen' && !(await confirmDialog('Aufgabe verwerfen? Sie bleibt im Protokoll sichtbar.', { ok: 'Verwerfen', danger: true }))) return;
-      save({ status: s });
+      save({ status: s }, s === 'verworfen' ? 'Aufgabe verworfen' : `Status: ${STATUS[s].label}`);
     };
 
     const header = h('header', { class: 'task-head' },
@@ -81,7 +81,8 @@ export default async function taskView(el, { id }) {
         t.stale ? h('span', { class: 'flag flag-stale' }, `${t.idle_days} Tage ohne Bewegung`) : null),
       h('div', { class: 'task-head-actions' }, statusButtons,
         t.kind === 'idee' && edit ? button('In Aufgabe umwandeln', () => save({ kind: 'aufgabe' }, 'Aus der Idee wird eine Aufgabe'), { kind: 'ghost' }) : null),
-      t.status === 'wartet' ? h('div', { class: 'callout callout-violet' }, icon('clock'), h('span', {}, 'Wartet auf ', h('strong', {}, t.waiting_who || '—'), t.waiting_what ? `: ${t.waiting_what}` : '')) : null);
+      t.status === 'wartet' ? h('div', { class: 'callout callout-violet' }, icon('clock'), h('span', {}, 'Wartet auf ', h('strong', {}, t.waiting_who || '—'), t.waiting_what ? `: ${t.waiting_what}` : '')) : null,
+      glance(t, d));
 
     // ----- Hauptspalte -----
     const descView = t.description ? richText(t.description) : h('p', { class: 'muted' }, 'Keine Beschreibung.');
@@ -267,3 +268,23 @@ async function learningDialog(t) {
 }
 
 export { isAdmin, state };
+
+// ----- Auf einen Blick: das Wichtigste einer Aufgabe hervorgehoben -----
+const YOUTH = /\b(U\s?\d{1,2}|Jugend|Schüler|Mädchen|Jungen|Mini)\b/i;
+function glance(t, d) {
+  if (t.status === 'erledigt' || t.status === 'verworfen') return null;
+  const name = (id) => state.users.find(u => u.id === id)?.name;
+  const days = t.due_date ? Math.round((Date.parse(t.due_date) - Date.parse(today())) / 86_400_000) : null;
+  const tone = days == null ? '' : days < 0 ? 'red' : days <= 3 ? 'amber' : 'green';
+  const when = days == null ? 'ohne Frist' : days < 0 ? `seit ${-days} Tag(en) überfällig` : days === 0 ? 'heute' : days === 1 ? 'morgen' : `in ${days} Tagen`;
+  const next = d.steps.find(s => !s.done);
+  const games = (d.events || []).filter(e => e.source === 'spielplan');
+  const box = (cls, ic, label, main, sub) => h('div', { class: `glance-box ${cls}` }, h('span', { class: 'glance-label' }, icon(ic, 14), label), h('strong', {}, main), sub ? h('small', {}, sub) : null);
+  return h('div', { class: 'glance', 'aria-label': 'Auf einen Blick' },
+    box(`tone-${tone}`, 'clock', 'Frist', when, t.due_date ? fmtDate(t.due_date, { weekday: 'short' }) : null),
+    box(t.owner_id ? (t.deputy_id ? '' : 'tone-amber-soft') : 'tone-red', 'user', 'Zuständig', name(t.owner_id) || 'niemand – bitte zuweisen', t.deputy_id ? `Vertretung: ${name(t.deputy_id)}` : 'keine Vertretung'),
+    next ? box('tone-accent', 'chevronRight', 'Nächster Schritt', next.title, `${d.steps.filter(s => s.done).length} von ${d.steps.length} erledigt`) : null,
+    games.length ? h('div', { class: 'glance-box glance-wide' }, h('span', { class: 'glance-label' }, icon('calendar', 14), games.length > 1 ? `${games.length} Spiele an diesem Tag` : 'Spiel'),
+      h('ul', {}, games.map(g => h('li', {}, h('strong', {}, g.time || '–'), ' ', g.title.replace(/^🏠\s*/, ''), YOUTH.test(g.title) ? h('span', { class: 'pill pill-ok' }, 'Jugend · kein SR nötig') : null))),
+      games[0].location ? h('small', {}, games[0].location) : null) : null);
+}

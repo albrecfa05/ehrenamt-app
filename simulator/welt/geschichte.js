@@ -29,6 +29,8 @@ const done = (t) => t?.status === 'erledigt';
 const doneBy = (t, date) => done(t) && !!t.completed_at && t.completed_at.slice(0, 10) <= date;
 const appInbox = (since, subjectLike) => one('SELECT * FROM inbox WHERE created_at >= ? AND subject LIKE ? ORDER BY id DESC', since, subjectLike);
 const areaLike = (w) => one('SELECT * FROM areas WHERE active = 1 AND name LIKE ?', `%${w}%`);
+// Heimspiel-Aufgabe zu einem Spiel – auch wenn mehrere Heimspiele eines Tages in einer Aufgabe zusammengefasst sind
+const heimspielTask = (uid) => one(`SELECT * FROM tasks WHERE parent_source LIKE ? OR id = (SELECT task_id FROM events WHERE external_uid LIKE ? AND task_id IS NOT NULL LIMIT 1) ORDER BY id LIMIT 1`, `spielplan:%:${uid}%`, `${uid}%`);
 const player = () => one(`SELECT * FROM users WHERE role = 'admin' ORDER BY id LIMIT 1`);
 const sentTo = (since, addr) => W().mails.some(m => m.folder === 'sent' && m.received >= since && (m.to || '').toLowerCase().includes(addr));
 const pdf = (title, lines) => makePdf([{ text: title, size: 15, bold: true, gap: 0 }, { rule: true }, ...lines.map(t => typeof t === 'string' ? { text: t } : t)], { title });
@@ -262,10 +264,10 @@ export const EREIGNISSE = [
       return { uid: g.uid, game_date: g.date };
     },
     checks: [
-      { label: 'Heimspieltag-Aufgabe aus dem Spielplan', ok: (c, d) => !!one('SELECT 1 FROM tasks WHERE parent_source LIKE ?', `spielplan:%:${d.uid}%`) },
+      { label: 'Heimspieltag-Aufgabe aus dem Spielplan', ok: (c, d) => !!heimspielTask(d.uid) },
       { label: 'Aufruf Hallen- und Küchendienst vorbereitet', ok: (c) => drafts(c.since, 'T-HEIMSPIEL').length + drafts(c.since, 'T-HELFER').length > 0 },
       { label: 'Absagen aus WhatsApp in der App festgehalten', ok: (c) => !!one(`SELECT 1 FROM inbox WHERE created_at >= ? AND (body LIKE '%Kuchen%' OR sender LIKE '%Karin%')`, c.since) || !!one(`SELECT 1 FROM comments WHERE created_at >= ? AND (body LIKE '%Karin%' OR body LIKE '%Kuchen%')`, c.since) },
-      { label: 'Heimspieltag vor Anpfiff vorbereitet', ok: (c, d) => doneBy(one('SELECT * FROM tasks WHERE parent_source LIKE ?', `spielplan:%:${d.uid}%`), d.game_date) },
+      { label: 'Heimspieltag vor Anpfiff vorbereitet', ok: (c, d) => doneBy(heimspielTask(d.uid), d.game_date) },
     ],
     tips: ['Herren I muss abonniert sein, „Heimspiel-Aufgaben“ im Katalog an – die Aufgabe entsteht 10 Tage vorher.', 'WhatsApp: Text kopieren → App „Eingang erfassen“ (Kanal WhatsApp) oder als Kommentar an die Heimspiel-Aufgabe.'],
   },

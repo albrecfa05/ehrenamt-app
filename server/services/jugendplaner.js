@@ -6,7 +6,7 @@
 // Die Namensliste bleibt im Jugendplaner. Gespeichert wird nur die letzte Zusammenfassung.
 
 import { q, getSetting, setSetting } from '../db.js';
-import { addDays, audit, daysBetween, formatDateDe, nowIso, today } from '../util.js';
+import { addDays, audit, bad, daysBetween, formatDateDe, nowIso, today } from '../util.js';
 import { createTask, updateTask } from './tasks.js';
 import { isOn, param } from './catalog.js';
 import * as jp from '../connectors/jugendplaner.js';
@@ -139,7 +139,7 @@ export async function sync({ user = null, withTasks = null } = {}) {
 /** Spielplan-Abo der Ehrenamt-App auf den Kalender des Jugendplaners anlegen (einmalig). */
 export function createFeed(user, areaId) {
   const st = stand();
-  if (!st?.icsKey) throw Object.assign(new Error('Bitte zuerst einmal abgleichen – dabei liefert der Jugendplaner die Kalender-Adresse.'), { status: 400 });
+  if (!st?.icsKey) throw bad('Bitte zuerst einmal abgleichen – dabei liefert der Jugendplaner die Kalender-Adresse.');
   const url = jp.icsUrl(st.icsKey);
   const ex = q.get('SELECT id FROM feeds WHERE url = ?', url);
   if (ex) return { id: ex.id, existed: true };

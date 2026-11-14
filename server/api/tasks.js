@@ -1,5 +1,6 @@
 // Aufgaben sehen und bearbeiten (Kapitel 4: AUF-1 … AUF-14).
 
+import { draftValues, gamesOf } from '../services/spieltag.js';
 import { get, post, put, del } from '../http.js';
 import { q, tx, getSetting } from '../db.js';
 import { areaClause, assertArea, assertCanEditTask, isAdmin, loadTask } from '../access.js';
@@ -225,13 +226,21 @@ post('/api/tasks/:id/calc', ({ user, params, body }) => {
 });
 
 // Entwurf aus Textvorlage (AUT-5, AUT-14). Empfänger: nur Namen (AUT-9).
+// Vorbelegung für Textvorlagen aus der Aufgabe (z. B. Spieltag, Gegner, Halle, Schiedsrichter)
+get('/api/tasks/:id/draft-values', ({ user, params }) => {
+  const t = loadTask(user, int(params.id));
+  return { values: draftValues(t), games: gamesOf(t.id) };
+});
+
 post('/api/tasks/:id/drafts', ({ user, params, body }) => {
   const t = loadTask(user, int(params.id));
   const tpl = q.get('SELECT * FROM text_templates WHERE id = ? AND active = 1', int(body.template_id, { nullable: false, name: 'Vorlage' }));
   if (!tpl) throw bad('Vorlage nicht gefunden.');
   if (tpl.area_id && tpl.area_id !== t.area_id) throw bad('Diese Vorlage gehört zu einem anderen Bereich.');
   const area = q.get('SELECT * FROM areas WHERE id = ?', t.area_id);
-  const out = renderDraft(tpl, body.values || {}, { areaName: area.name, areaType: area.type, userName: user.name, taskTitle: t.title, dueDate: t.due_date });
+  // Spieldaten der Aufgabe (Datum, Gegner, Halle …) als Vorbelegung; Eingaben im Dialog haben Vorrang
+  const values = { ...draftValues(t), ...Object.fromEntries(Object.entries(body.values || {}).filter(([, v]) => v !== '' && v != null)) };
+  const out = renderDraft(tpl, values, { areaName: area.name, areaType: area.type, userName: user.name, taskTitle: t.title, dueDate: t.due_date });
   const recipients = cleanRecipients(body.recipients);
   const r = q.run(`INSERT INTO drafts (task_id, area_id, template_id, template_version, kind, subject, body, recipients, warnings, created_by, created_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
