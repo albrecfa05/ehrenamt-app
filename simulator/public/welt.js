@@ -284,8 +284,31 @@ async function render() {
   drawNav();
   try { await (VIEWS[key] || viewStart)(); } catch (e) { clear(main, h('div', { class: 'empty' }, e.message)); }
 }
+// Ausfüllen mit sichtbarer Rückmeldung: Fenster mit Fortschritt je Schritt, danach Zusammenfassung
 async function fill(key) {
-  await act(async () => { const r = await api('/api/kapitel/ausfuellen', { key }); toast(r.messages.join(' · ')); return r.status; });
+  const keys = key === 'alle' ? S.einrichtung.filter(c => !c.ok && !c.skipped && c.auto).map(c => c.key) : [key];
+  const label = (k) => S.einrichtung.find(c => c.key === k)?.label || k;
+  const list = h('ul', { class: 'fill-list' }, keys.map(k => h('li', { 'data-k': k, class: 'wait' }, h('span', { class: 'fi' }, '○'), h('div', {}, h('strong', {}, label(k)), h('small', {}, 'wartet …')))));
+  const head = h('p', { class: 'small muted' }, `Der Assistent trägt ${keys.length === 1 ? 'diesen Schritt' : `${keys.length} Schritte`} in die App ein – als Mia, über die normalen Funktionen. Alles steht danach im Protokoll der App.`);
+  const close = h('button', { class: 'small primary', disabled: true, onclick: () => document.querySelector('.modal-bg')?.remove() }, 'Fertig');
+  showModal('🪄 Ausfüllen lassen', h('div', {}, head, list, h('div', { class: 'row', style: 'margin-top:12px' }, h('span', { class: 'spacer' }), close)));
+  let ok = 0, bad = 0;
+  for (const k of keys) {
+    const li = list.querySelector(`[data-k="${k}"]`);
+    li.className = 'run'; li.querySelector('.fi').replaceChildren(h('span', { class: 'spin' })); li.querySelector('small').textContent = 'wird eingetragen …';
+    try {
+      const r = await api('/api/kapitel/ausfuellen', { key: k });
+      S = r.status;
+      li.className = 'ok'; li.querySelector('.fi').textContent = '✓'; li.querySelector('small').textContent = r.messages.join(' · ');
+      ok++;
+    } catch (e) {
+      li.className = 'err'; li.querySelector('.fi').textContent = '✕'; li.querySelector('small').textContent = e.message;
+      bad++;
+    }
+  }
+  head.textContent = bad ? `${ok} Schritt(e) eingetragen, ${bad} nicht möglich – Grund steht beim Schritt.` : `Fertig: ${ok} Schritt(e) eingetragen. In der App ist alles sichtbar (Adminpanel, Aufgaben, Kalender …).`;
+  close.disabled = false; close.focus();
+  await refresh(); await render();
 }
 async function act(fn, msg) {
   $('#busy').hidden = false;
@@ -302,6 +325,7 @@ window.addEventListener('hashchange', render);
 (async () => {
   WELT = await api('/api/welt');
   $('#applink').href = WELT.app_url;
+  if (WELT.stand) document.querySelector('.side-foot').append(h('div', { class: 'stand' }, `Programmstand ${WELT.stand}`));
   await refresh();
   await render();
   // Stand regelmäßig auffrischen (die App ändert Daten, die Welt hakt ab)

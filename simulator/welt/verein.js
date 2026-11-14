@@ -6,7 +6,7 @@
 import { addDays, formatDateDe, today } from '../../server/util.js';
 import { clockNow } from '../../server/clock.js';
 import { makePdf, textPdf } from './pdf.js';
-import { initWelt, putFile, newId } from './zustand.js';
+import { initWelt, putFile, newId, W, save, fileExists, removeFile } from './zustand.js';
 import { makeJugendplaner } from './jugendplaner.js';
 
 /** Jugendplaner-Stand passend zu den Erwachsenen-Spielen der Welt. */
@@ -214,6 +214,48 @@ function protokollBlocks(start) {
 
 // ---------- Welt anlegen ----------
 
+/** Legt die Unterlagen des Vereinsordners an (beim Erschaffen und bei der Reparatur). */
+export function unterlagen(s) {
+  const start = s.start;
+  const year = Number(start.slice(0, 4));
+  const doc = (title, kind, description, file, text = null) => s.docs.push({ id: newId('d'), title, kind, description, file, text });
+  doc('Satzung', 'pdf', 'Die gültige Satzung. Für die Auskunft der App den Text in die Wissensbasis übernehmen.', putFile('Satzung_TTV_Musterhausen.pdf', 'application/pdf', textPdf('Satzung des TTV Musterhausen 1962 e. V.', SATZUNG)), SATZUNG);
+  doc('Beitragsordnung', 'pdf', 'Beiträge und Stichtag – gehört in die Einstellungen (Beitragsstufen) und in die Wissensbasis.', putFile('Beitragsordnung_TTV.pdf', 'application/pdf', textPdf('Beitragsordnung des TTV Musterhausen', BEITRAGSORDNUNG)), BEITRAGSORDNUNG);
+  doc('Ämterliste und Postfächer', 'pdf', 'Wer welches Amt hat, wer vertritt – für Konten und Ämter in der App.', putFile('Aemterliste_Vorstand.pdf', 'application/pdf', textPdf('Ämterliste und Funktionspostfächer', aemterText())), aemterText());
+  doc('Jahresplan des Vorstands', 'pdf', 'Die festen Termine im Vereinsjahr – damit lässt sich der geschätzte Jahreskalender der App korrigieren.', putFile('Jahresplan_Vorstand.pdf', 'application/pdf', textPdf('Jahresplan des Vorstands', jahresplanText(year))), jahresplanText(year));
+  const sp = sponsors(start);
+  const spText = sp.map(x => `${x.company} (${x.kategorie}) – Ansprechpartner ${x.contact}, Pate ${x.pate}, Laufzeit ${x.start ? formatDateDe(x.start) : '–'} bis ${x.ende ? formatDateDe(x.ende) : 'offen'}, Status ${x.status}, letzter Kontakt ${formatDateDe(x.letzter_kontakt)}`).join('\n');
+  doc('Sponsorenübersicht', 'pdf', 'Bisher eine Liste in der Vorstandsmappe. In der App unter „Sponsoren“ anlegen.', putFile('Sponsoren_Uebersicht.pdf', 'application/pdf', textPdf('Sponsoren und Förderer', spText)), spText);
+  doc('Asana-Export „Vorstand TTV“', 'csv', 'Bisherige Aufgabenliste aus Asana. In der App: Adminpanel → Asana-Import.', putFile('Asana_Vorstand_TTV.csv', 'text/csv', Buffer.from(asanaCsv(start))));
+  doc('meinVerein-Export Mitglieder', 'csv', 'Gelbe Daten! Für die Prüfung der Beitragsstufen (nur mit Schalter „Gelb lokal“). Die App speichert den Export nicht.', putFile('meinVerein_Mitglieder.csv', 'text/csv', Buffer.from(mitgliederCsv(start))));
+  doc('Protokoll der letzten Mitgliederversammlung', 'pdf', 'Mit offenen Ideen aus der Versammlung.', putFile('Protokoll_MV.pdf', 'application/pdf', makePdf(protokollBlocks(start), { title: 'Protokoll Mitgliederversammlung' })));
+  doc('Hallenbelegungsplan', 'pdf', 'Aktueller Plan der Gemeinde.', putFile('Hallenbelegung_Sporthalle.pdf', 'application/pdf', makePdf([
+    { text: 'Hallenbelegung Sporthalle Musterhausen', size: 15, bold: true, gap: 0 }, { rule: true },
+    { text: 'Montag 18–20 Uhr: TTV Jugend\nMittwoch 19–22 Uhr: TTV Training Erwachsene\nFreitag 19–22 Uhr: TTV Herren II (Heimspiele)\nSamstag 16–22 Uhr: TTV Herren I (Heimspiele)\nSonntag 9–14 Uhr: TTV Jugend (Heimspiele)' },
+  ], { title: 'Hallenbelegung' })));
+}
+
+/**
+ * Prüft beim Start, ob alle Dateien der Welt vorhanden sind. Fehlende Unterlagen im Vereinsordner werden neu
+ * erzeugt; fehlende Anhänge von Mails, Briefen und Nachrichten werden entfernt. Gibt die Zahl der Reparaturen zurück.
+ */
+export function reparieren() {
+  const s = W();
+  let n = 0;
+  if (s.docs.some(d => !fileExists(d.file))) {
+    for (const d of s.docs) if (fileExists(d.file)) removeFile(d.file);
+    s.docs = [];
+    unterlagen(s);
+    n++;
+  }
+  for (const m of s.mails) { const before = m.attachments.length; m.attachments = m.attachments.filter(fileExists); n += before - m.attachments.length; }
+  for (const p of s.post) if (p.file && !fileExists(p.file)) { p.file = null; p.text = `${p.text || ''} (Datei fehlt)`.trim(); n++; }
+  for (const c of Object.values(s.chats)) for (const m of c.messages) { const before = m.files.length; m.files = m.files.filter(fileExists); n += before - m.files.length; }
+  for (const id of Object.keys(s.files)) if (!fileExists(id)) delete s.files[id];
+  if (n) save(true);
+  return n;
+}
+
 export function erschaffen() {
   const start = today();
   const year = Number(start.slice(0, 4));
@@ -232,21 +274,7 @@ export function erschaffen() {
   s.jp = jugendplanerFor(s.games);
   initWelt(s);
 
-  const doc = (title, kind, description, file, text = null) => s.docs.push({ id: newId('d'), title, kind, description, file, text });
-  doc('Satzung', 'pdf', 'Die gültige Satzung. Für die Auskunft der App den Text in die Wissensbasis übernehmen.', putFile('Satzung_TTV_Musterhausen.pdf', 'application/pdf', textPdf('Satzung des TTV Musterhausen 1962 e. V.', SATZUNG)), SATZUNG);
-  doc('Beitragsordnung', 'pdf', 'Beiträge und Stichtag – gehört in die Einstellungen (Beitragsstufen) und in die Wissensbasis.', putFile('Beitragsordnung_TTV.pdf', 'application/pdf', textPdf('Beitragsordnung des TTV Musterhausen', BEITRAGSORDNUNG)), BEITRAGSORDNUNG);
-  doc('Ämterliste und Postfächer', 'pdf', 'Wer welches Amt hat, wer vertritt – für Konten und Ämter in der App.', putFile('Aemterliste_Vorstand.pdf', 'application/pdf', textPdf('Ämterliste und Funktionspostfächer', aemterText())), aemterText());
-  doc('Jahresplan des Vorstands', 'pdf', 'Die festen Termine im Vereinsjahr – damit lässt sich der geschätzte Jahreskalender der App korrigieren.', putFile('Jahresplan_Vorstand.pdf', 'application/pdf', textPdf('Jahresplan des Vorstands', jahresplanText(year))), jahresplanText(year));
-  const sp = sponsors(start);
-  const spText = sp.map(x => `${x.company} (${x.kategorie}) – Ansprechpartner ${x.contact}, Pate ${x.pate}, Laufzeit ${x.start ? formatDateDe(x.start) : '–'} bis ${x.ende ? formatDateDe(x.ende) : 'offen'}, Status ${x.status}, letzter Kontakt ${formatDateDe(x.letzter_kontakt)}`).join('\n');
-  doc('Sponsorenübersicht', 'pdf', 'Bisher eine Liste in der Vorstandsmappe. In der App unter „Sponsoren“ anlegen.', putFile('Sponsoren_Uebersicht.pdf', 'application/pdf', textPdf('Sponsoren und Förderer', spText)), spText);
-  doc('Asana-Export „Vorstand TTV“', 'csv', 'Bisherige Aufgabenliste aus Asana. In der App: Adminpanel → Asana-Import.', putFile('Asana_Vorstand_TTV.csv', 'text/csv', Buffer.from(asanaCsv(start))));
-  doc('meinVerein-Export Mitglieder', 'csv', 'Gelbe Daten! Für die Prüfung der Beitragsstufen (nur mit Schalter „Gelb lokal“). Die App speichert den Export nicht.', putFile('meinVerein_Mitglieder.csv', 'text/csv', Buffer.from(mitgliederCsv(start))));
-  doc('Protokoll der letzten Mitgliederversammlung', 'pdf', 'Mit offenen Ideen aus der Versammlung.', putFile('Protokoll_MV.pdf', 'application/pdf', makePdf(protokollBlocks(start), { title: 'Protokoll Mitgliederversammlung' })));
-  doc('Hallenbelegungsplan', 'pdf', 'Aktueller Plan der Gemeinde.', putFile('Hallenbelegung_Sporthalle.pdf', 'application/pdf', makePdf([
-    { text: 'Hallenbelegung Sporthalle Musterhausen', size: 15, bold: true, gap: 0 }, { rule: true },
-    { text: 'Montag 18–20 Uhr: TTV Jugend\nMittwoch 19–22 Uhr: TTV Training Erwachsene\nFreitag 19–22 Uhr: TTV Herren II (Heimspiele)\nSamstag 16–22 Uhr: TTV Herren I (Heimspiele)\nSonntag 9–14 Uhr: TTV Jugend (Heimspiele)' },
-  ], { title: 'Hallenbelegung' })));
+  unterlagen(s);
   return s;
 }
 

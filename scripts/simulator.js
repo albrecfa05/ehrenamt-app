@@ -30,6 +30,11 @@ process.env.TTE_SIMULATOR = '1';
 process.env.TTE_LEER = '1';
 process.env.TTE_WELT_URL = `http://localhost:${WELT_PORT}`;
 const echteKi = process.argv.includes('--echte-ki');
+// Programmstand (letzter Commit) anzeigen – so sieht man, ob die neueste Version läuft
+try {
+  const { execSync } = await import('node:child_process');
+  process.env.TTE_STAND = execSync('git log -1 --format="%h vom %cd" --date=format:"%d.%m.%Y %H:%M"', { cwd: root, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+} catch { process.env.TTE_STAND = ''; }
 
 // Nachbau-Dienste VOR dem Laden der App-Konfiguration eintragen (die .env überschreibt gesetzte Werte nicht)
 const { dienstEnv } = await import('../simulator/welt/dienste.js');
@@ -52,6 +57,8 @@ if (neu) {
   save(true);
 }
 restoreClock();
+// Fehlende Dateien (z. B. Ordner von Hand gelöscht) reparieren
+{ const { reparieren } = await import('../simulator/welt/verein.js'); const n = reparieren(); if (n) console.log(`  Vereinswelt repariert: ${n} fehlende Datei(en) ersetzt bzw. entfernt.`); }
 // Ältere Welten ohne Jugendplaner nachrüsten
 if (!W().jp) { const { jugendplanerFor } = await import('../simulator/welt/verein.js'); W().jp = jugendplanerFor(W().games); save(true); }
 
@@ -60,6 +67,7 @@ const welt = createWeltServer({ appUrl: `http://localhost:${APP_PORT}`, base: `h
 welt.listen(WELT_PORT, '127.0.0.1', () => {
   app.listen(APP_PORT, config.host, () => {
     console.log('');
+    if (process.env.TTE_STAND) console.log(`  Programmstand: ${process.env.TTE_STAND}`);
     console.log(`  Vereinswelt (TTV Musterhausen):  http://localhost:${WELT_PORT}`);
     console.log(`  Ehrenamt-App (startet leer):     http://localhost:${APP_PORT}`);
     console.log('');

@@ -131,7 +131,9 @@ const STEPS = {
     if (!a.ttv) await STEPS.bereiche(app);
     const U = await users(app);
     const doc = W().docs.find(d => d.title.startsWith('Asana'));
-    const csv = readFile(doc.file).toString('utf8');
+    const raw = doc && readFile(doc.file);
+    if (!raw) throw Object.assign(new Error('Der Asana-Export fehlt im Vereinsordner – Simulator neu starten repariert ihn.'), { status: 400 });
+    const csv = raw.toString('utf8');
     const map = Object.fromEntries(PEOPLE.map(p => [p.name, personId(U, p.key, ctx.player)]));
     const r = await app.post('/api/import/asana', { csv, area_id: (await areas(app)).ttv.id, assignees: map, include_completed: true });
     return `${r.tasks} Aufgaben und ${r.steps} Teilschritte aus Asana übernommen`;

@@ -95,3 +95,21 @@ test('Vorschau ohne Download und „ans Vorstandspostfach“', async () => {
   const mails = (await w.get(`/api/postfach?mailbox=${encodeURIComponent(MAILBOX.ttv)}`)).data;
   assert.ok(mails.some(m => m.subject.startsWith('WhatsApp') && m.attachments === 2));
 });
+
+test('Fehlende Dateien: kein Absturz, Reparatur stellt den Vereinsordner wieder her', async () => {
+  const { W } = await import('../simulator/welt/zustand.js');
+  const { reparieren } = await import('../simulator/welt/verein.js');
+  const doc = W().docs.find(d => d.title === 'Satzung');
+  fs.unlinkSync(path.join(dir, 'welt', 'dateien', doc.file));
+  let r = await fetch(`${base}/datei/${doc.file}`);
+  assert.equal(r.status, 404);
+  assert.match((await r.json()).error, /fehlt/);
+  r = await w.get(`/vorschau/${doc.file}`);
+  assert.equal(r.status, 404);
+  assert.equal((await w.get('/api/status')).status, 200, 'Server läuft weiter');
+  assert.ok(reparieren() >= 1);
+  const neu = W().docs.find(d => d.title === 'Satzung');
+  r = await fetch(`${base}/datei/${neu.file}`);
+  assert.equal(r.status, 200);
+  assert.equal(W().docs.length, 9);
+});

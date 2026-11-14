@@ -157,3 +157,13 @@ th { color: var(--muted); font-weight: 600; font-size: .8rem; }
   .time-btns button { padding: 5px 8px; }
   .grid { grid-template-columns: 1fr; }
 }
+
+.fill-list { list-style: none; padding: 0; margin: 10px 0 0; }
+.fill-list li { display: grid; grid-template-columns: 26px 1fr; gap: 8px; padding: 8px 0; border-bottom: 1px dashed var(--border); }
+.fill-list small { display: block; color: var(--muted); }
+.fill-list .fi { font-weight: 700; display: grid; place-items: center; height: 22px; }
+.fill-list li.ok .fi { color: var(--green); } .fill-list li.err .fi, .fill-list li.err small { color: var(--red); }
+.fill-list li.wait { opacity: .6; }
+.side-foot .stand { margin-top: 6px; font-family: ui-monospace, Consolas, monospace; font-size: .72rem; }
+.modal { overflow-x: hidden; }
+.modal small, .modal strong { overflow-wrap: anywhere; }

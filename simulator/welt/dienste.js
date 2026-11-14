@@ -88,7 +88,7 @@ function graph(req, url, raw, json) {
   const att = p.match(/\/messages\/([^/]+)\/attachments$/);
   if (att) {
     const m = W().mails.find(x => x.id === decodeURIComponent(att[1]));
-    return json({ value: (m?.attachments || []).map(fid => ({ '@odata.type': '#microsoft.graph.fileAttachment', name: fileMeta(fid).name, contentType: fileMeta(fid).mime, contentBytes: readFile(fid).toString('base64'), isInline: false })) });
+    return json({ value: (m?.attachments || []).filter(fid => readFile(fid)).map(fid => ({ '@odata.type': '#microsoft.graph.fileAttachment', name: fileMeta(fid).name, contentType: fileMeta(fid).mime, contentBytes: readFile(fid).toString('base64'), isInline: false })) });
   }
   if (req.method === 'POST' && /\/users\/[^/]+\/messages$/.test(p)) {
     const b = JSON.parse(raw.toString('utf8') || '{}');

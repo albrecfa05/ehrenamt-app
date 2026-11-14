@@ -18,6 +18,7 @@ import { EREIGNISSE } from './geschichte.js';
 
 const PUBLIC = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' };
+const FEHLT = 'Diese Datei fehlt in der Vereinswelt (Ordner data-simulator von Hand verändert?). Simulator neu starten repariert die Unterlagen; ganz frisch: npm run simulator -- --neu';
 const visible = (m) => m.received <= clockNow().toISOString();
 
 function eml(m) {
@@ -30,6 +31,7 @@ function eml(m) {
   ];
   for (const fid of m.attachments) {
     const f = fileMeta(fid);
+    if (!readFile(fid)) continue;
     lines.push(`--${b}`, `Content-Type: ${f.mime}; name="${f.name}"`, 'Content-Transfer-Encoding: base64', `Content-Disposition: attachment; filename="${f.name}"`, '', readFile(fid).toString('base64').replace(/.{76}/g, '$&\r\n'));
   }
   lines.push(`--${b}--`, '');
@@ -38,7 +40,7 @@ function eml(m) {
 
 function info(appUrl, base) {
   return {
-    verein: VEREIN, app_url: appUrl,
+    verein: VEREIN, app_url: appUrl, stand: process.env.TTE_STAND || '',
     people: PEOPLE.map(p => ({ name: p.name, role: p.role, area: p.area, mail: p.mail, office: p.office, you: !!p.you, admin: !!p.admin })),
     mailboxes: Object.entries(W().mailboxes).map(([address, name]) => ({ address, name })),
     teams: Object.entries(TEAMS).map(([key, t]) => ({ key, ...t, ics: `${base}/clicktt/${key}.ics` })),
@@ -81,9 +83,10 @@ export function createWeltServer(opts) {
       let m;
       if ((m = p.match(/^\/datei\/([\w-]+)$/))) {
         const f = fileMeta(m[1]);
-        if (!f) return json({ error: 'Nicht gefunden' }, 404);
+        const data = f ? readFile(m[1]) : null;
+        if (!data) return json({ error: FEHLT }, 404);
         res.writeHead(200, { 'Content-Type': f.mime, 'Content-Disposition': `${url.searchParams.has('ansehen') ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(f.name)}` });
-        return res.end(readFile(m[1]));
+        return res.end(data);
       }
       if ((m = p.match(/^\/eml\/([\w-]+)$/))) {
         const mail = W().mails.find(x => x.id === m[1]);
@@ -159,7 +162,7 @@ export function createWeltServer(opts) {
       if (p === '/api/kapitel/ueberspringen' && req.method === 'POST') { const b = await body(); skip(b.key, b.on !== false); return json(status()); }
       if ((m = p.match(/^\/api\/datei\/([\w-]+)\/mailen$/)) && req.method === 'POST') {
         const f = fileMeta(m[1]);
-        if (!f) return json({ error: 'Nicht gefunden' }, 404);
+        if (!f || !readFile(f.id)) return json({ error: FEHLT }, 404);
         const b = await body();
         mail(MAILBOX.ttv, { from: 'mia.muster@mail.example', fromName: 'Mia Muster (weitergeleitet)', subject: b.betreff || f.name, body: b.text || `Weitergeleitet aus der Vereinswelt: ${f.name}`, attachments: [[f.name, readFile(f.id), f.mime]] });
         log(`✉ ${f.name} ans Vorstandspostfach geschickt`);
@@ -168,14 +171,15 @@ export function createWeltServer(opts) {
       if ((m = p.match(/^\/api\/chats\/(\w+)\/([\w-]+)\/weiterleiten$/)) && req.method === 'POST') {
         const msg = W().chats[m[1]]?.messages.find(x => x.id === m[2]);
         if (!msg) return json({ error: 'Nicht gefunden' }, 404);
-        mail(MAILBOX.ttv, { from: 'mia.muster@mail.example', fromName: `WhatsApp: ${msg.from} (weitergeleitet)`, subject: `WhatsApp ${W().chats[m[1]].name}: ${msg.text.slice(0, 50)}`, body: `${msg.from} schrieb in „${W().chats[m[1]].name}“:\n${msg.text}`, attachments: msg.files.map(fid => [fileMeta(fid).name, readFile(fid), fileMeta(fid).mime]) });
+        mail(MAILBOX.ttv, { from: 'mia.muster@mail.example', fromName: `WhatsApp: ${msg.from} (weitergeleitet)`, subject: `WhatsApp ${W().chats[m[1]].name}: ${msg.text.slice(0, 50)}`, body: `${msg.from} schrieb in „${W().chats[m[1]].name}“:\n${msg.text}`, attachments: msg.files.filter(fid => readFile(fid)).map(fid => [fileMeta(fid).name, readFile(fid), fileMeta(fid).mime]) });
         log(`✉ WhatsApp-Nachricht von ${msg.from} ans Vorstandspostfach weitergeleitet`);
         return json({ ok: true });
       }
       if ((m = p.match(/^\/vorschau\/([\w-]+)$/))) {
         const f = fileMeta(m[1]);
-        if (!f) return json({ error: 'Nicht gefunden' }, 404);
-        return json(vorschau(f, readFile(f.id)));
+        const data = f ? readFile(f.id) : null;
+        if (!data) return json({ error: FEHLT }, 404);
+        return json(vorschau(f, data));
       }
       if (p === '/api/einstellung' && req.method === 'POST') {
         const b = await body();
@@ -195,6 +199,8 @@ export function createWeltServer(opts) {
       fs.createReadStream(file).pipe(res);
     } catch (err) {
       if (!err.status) console.error('[Vereinswelt]', err);
+      // Nie zweimal antworten (das brachte den Server zum Absturz)
+      if (res.headersSent) { res.end(); return; }
       json({ error: err.message }, err.status || 500);
     }
   });

@@ -40,7 +40,10 @@ export function putFile(name, mime, data) {
   return id;
 }
 export function fileMeta(id) { return state.files[id] || null; }
-export function readFile(id) { const m = fileMeta(id); return m ? fs.readFileSync(path.join(dir, 'dateien', id)) : null; }
+export const fileExists = (id) => !!id && !!state.files[id] && fs.existsSync(path.join(dir, 'dateien', id));
+/** Inhalt einer Datei oder null, wenn sie fehlt (z. B. Ordner von Hand gelöscht). */
+export function readFile(id) { return fileExists(id) ? fs.readFileSync(path.join(dir, 'dateien', id)) : null; }
+export function removeFile(id) { try { fs.unlinkSync(path.join(dir, 'dateien', id)); } catch { /* schon weg */ } delete state.files[id]; }
 
 export function log(text, kind = 'info') {
   state.log.push({ at: clockNow().toISOString(), text, kind });
