@@ -34,6 +34,7 @@ server/
     m365.js         Microsoft Graph: Mails lesen, Entwürfe/Termine/Dateien anlegen – keine Sendefunktion
     claude.js       Claude (Anthropic SDK): strukturierte Vorschläge, keine Werkzeuge
     ics.js          Kalender-Abos (Spielpläne) lesen, Heimspiele erkennen
+    jugendplaner.js TTV-Jugendplaner lesen (Stand, Kalender), Anmeldung per HMAC – ändert dort nichts
   services/
     tasks.js        Fachlogik der Aufgaben: Anlegen aus Vorlagen, Statuswechsel, Liegezeit, Erfahrungswerte
     automation.js   Regeln, Stufen, Freigaben (asynchron ausgeführt), Übersichten

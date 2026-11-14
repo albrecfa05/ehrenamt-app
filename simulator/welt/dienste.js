@@ -8,6 +8,7 @@
 import { clockNow } from '../../server/clock.js';
 import { W, save, putFile, newId, readFile, fileMeta, log } from './zustand.js';
 import { TEAMS } from './verein.js';
+import { JP_SECRET } from './jugendplaner.js';
 
 const TOKEN = 'vereinswelt-token';
 
@@ -138,6 +139,9 @@ export function dienstEnv(base, { echteKi = false } = {}) {
   process.env.M365_CLIENT_SECRET = 'vereinswelt-geheimnis-nur-fantasie';
   process.env.M365_LOGIN_URL = `${base}/m365`;
   process.env.M365_GRAPH_URL = `${base}/m365/graph`;
+  process.env.JUGENDPLANER_URL = `${base}/jugendplaner`;
+  process.env.JUGENDPLANER_SECRET = JP_SECRET;
+  delete process.env.JUGENDPLANER_PIN;
   if (!echteKi) {
     process.env.ANTHROPIC_API_KEY = 'sk-ant-vereinswelt-kein-echter-schluessel';
     process.env.ANTHROPIC_BASE_URL = `${base}/anthropic`;

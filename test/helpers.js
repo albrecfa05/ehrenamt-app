@@ -8,6 +8,9 @@ export async function startApp() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tte-test-'));
   process.env.DATA_DIR = dir;
   process.env.DISABLE_SCHEDULER = '1';
+  const { config } = await import('../server/config.js');
+  // Schutz: Tests dürfen nie mit dem echten Datenordner laufen (z. B. wenn die Konfiguration zu früh geladen wurde)
+  if (!path.resolve(config.dataDir).startsWith(path.resolve(os.tmpdir()))) throw new Error(`Test würde den Datenordner ${config.dataDir} benutzen – DATA_DIR vor dem ersten Import setzen.`);
   const { createServer } = await import('../server/index.js');
   const server = createServer();
   await new Promise(r => server.listen(0, '127.0.0.1', r));

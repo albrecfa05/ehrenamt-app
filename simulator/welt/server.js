@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { clockNow } from '../../server/clock.js';
 import { W, save, fileMeta, readFile, log } from './zustand.js';
 import { handleDienst } from './dienste.js';
+import { handleJugendplaner, jpParents } from './jugendplaner.js';
 import { scanToMail } from './kanaele.js';
 import { MAILBOX, PEOPLE, TEAMS, VEREIN } from './verein.js';
 import { advance, abortEreignis, evaluate, react, sendMail, startEreignis, status } from './motor.js';
@@ -48,6 +49,7 @@ export function createWeltServer({ appUrl, base }) {
     const url = new URL(req.url, 'http://welt');
     const json = (o, s = 200) => { res.writeHead(s, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(o)); };
     try {
+      if (await handleJugendplaner(req, res, url, '/jugendplaner', { getData: () => W().jp, saveData: (d) => { W().jp = d; save(); } })) return;
       if (await handleDienst(req, res, url)) return;
       const p = url.pathname;
       const body = async () => { const c = []; for await (const x of req) c.push(x); try { return JSON.parse(Buffer.concat(c).toString('utf8') || '{}'); } catch { return {}; } };
@@ -93,6 +95,22 @@ export function createWeltServer({ appUrl, base }) {
       if ((m = p.match(/^\/api\/chats\/(\w+)\/gelesen$/)) && req.method === 'POST') { W().chats[m[1]]?.messages.forEach(x => { x.read = true; }); save(); return json({ ok: true }); }
       if (p === '/api/ordner') return json(W().docs.map(d => ({ ...d, file: fileMeta(d.file) })));
       if (p === '/api/clicktt') return json({ teams: info(appUrl, base).teams, games: W().games.filter(g => g.date >= clockNow().toISOString().slice(0, 10)).slice(0, 30) });
+      if (p === '/api/jugendplaner') {
+        const jp = W().jp, d0 = clockNow().toISOString().slice(0, 10);
+        return json({ teams: jp.youthTeams, parents: jpParents(), url: `${base}/jugendplaner`, games: jp.games.filter(g => g.date >= d0).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).slice(0, 24) });
+      }
+      if (p === '/api/jugendplaner/set' && req.method === 'POST') {
+        const b = await body();
+        const g = W().jp.games.find(x => x.id === b.id);
+        if (!g) return json({ error: 'Spiel nicht gefunden' }, 404);
+        if (b.field === 'drivers') g.drivers = String(b.value || '');
+        else if (b.field === 'cancelled') g.cancelled = !!b.value;
+        else if (b.field === 'avail') { if (b.value) g.avail[b.player] = b.value; else delete g.avail[b.player]; }
+        W().jp.rev = (W().jp.rev || 0) + 1;
+        save();
+        log(`Jugendplaner: ${b.field === 'drivers' ? `Fahrer für ${g.team} am ${g.date}: ${g.drivers || '(leer)'}` : b.field === 'avail' ? `Rückmeldung für ${g.team} am ${g.date} geändert` : `${g.team} am ${g.date} ${g.cancelled ? 'abgesagt' : 'wieder angesetzt'}`}`);
+        return json({ ok: true });
+      }
       if (p === '/api/m365') return json({ aussen: W().aussen.slice().reverse(), drafts: W().mails.filter(x => x.folder === 'drafts').length, info: info(appUrl, base).m365 });
       if (p === '/api/zeit' && req.method === 'POST') { const b = await body(); await advance(b.days); return json(status()); }
       if (p === '/api/pruefen' && req.method === 'POST') { react(); evaluate(); return json(status()); }

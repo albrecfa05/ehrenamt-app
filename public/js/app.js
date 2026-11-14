@@ -25,6 +25,7 @@ import help from './views/help.js';
 import search from './views/search.js';
 import sponsors from './views/sponsors.js';
 import setup from './views/setup.js';
+import spielbetrieb from './views/spielbetrieb.js';
 
 const ROUTES = [
   ['start', dashboard], ['aufgaben', tasks], ['ideen', (el, p) => tasks(el, { ...p, ideas: true })], ['aufgabe/:id', task],
@@ -33,13 +34,14 @@ const ROUTES = [
   ['ablage', files], ['auskunft', knowledge], ['auskunft/:tab', knowledge], ['handbuch', handbook],
   ['automatisierung', automation], ['automatisierung/:tab', automation], ['kennzahlen', metrics], ['protokoll', auditView],
   ['admin', admin], ['admin/:tab', admin], ['sponsoren', sponsors], ['konto', account], ['hilfe', help], ['hilfe/:tab', help], ['suche', search],
-  ['einrichtung', setup],
+  ['einrichtung', setup], ['spielbetrieb', spielbetrieb],
 ];
 
 const NAV = [
   ['Arbeiten', [
     ['start', 'Übersicht', 'home'], ['aufgaben', 'Aufgaben', 'list'], ['eingang', 'Eingang', 'inbox', () => state.me?.counts.inbox],
     ['entwuerfe', 'Entwürfe', 'mail'], ['kalender', 'Kalender', 'calendar'], ['ideen', 'Ideenspeicher', 'bulb'], ['sponsoren', 'Sponsoren', 'handshake'],
+    ['spielbetrieb', 'Spielbetrieb Jugend', 'layers', null, () => state.me?.jugendplaner],
   ]],
   ['Vorgänge und Wissen', [
     ['vorgaenge', 'Vorgangsvorlagen', 'flow'], ['texte', 'Textvorlagen', 'text'], ['ablage', 'Ablage', 'folder'],
@@ -173,7 +175,7 @@ function renderNav() {
     return h('a', { href: `#/${path}`, class: `nav-link ${current === path ? 'active' : ''}`, 'aria-current': current === path ? 'page' : null },
       icon(ic), h('span', {}, label), n ? h('span', { class: 'nav-count' }, n) : null);
   };
-  const groups = NAV.map(([title, items]) => h('div', { class: 'nav-group' }, h('div', { class: 'nav-title' }, title), items.map(link)));
+  const groups = NAV.map(([title, items]) => h('div', { class: 'nav-group' }, h('div', { class: 'nav-title' }, title), items.filter(i => !i[4] || i[4]()).map(link)));
   const bottom = h('div', { class: 'nav-group nav-bottom' },
     state.me.setup_open ? link(['einrichtung', 'Einrichtung', 'check']) : null,
     isAdmin() ? link(['admin', 'Adminpanel', 'settings']) : null,

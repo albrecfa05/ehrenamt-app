@@ -7,6 +7,8 @@ import { taskRow, openTaskForm } from './taskform.js';
 
 export default async function dashboard(el) {
   const d = await api.get('/api/dashboard');
+  const jp = state.me.jugendplaner ? await api.get('/api/jugendplaner').catch(() => null) : null;
+  const jpCrit = jp?.stand?.counts?.kritisch || 0;
   const hour = new Date().getHours();
   const greet = hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Hallo' : 'Guten Abend';
   const first = state.me.user.name.split(' ')[0];
@@ -24,6 +26,8 @@ export default async function dashboard(el) {
       button('Übersicht als Bericht', async () => { const r = await api.post('/api/reports/overview', {}); location.hash = `#/automatisierung/berichte?id=${r.id}`; }, { iconName: 'chart', kind: 'ghost' })),
     state.me.setup_open ? h('a', { class: 'notice notice-action', href: '#/einrichtung' }, icon('check', 16),
       h('span', {}, h('strong', {}, 'Einrichtung noch nicht abgeschlossen. '), 'Der Assistent führt durch Bereiche, Ämter, Datenschutz, Verbindungen und Automatisierungen.'), h('span', { class: 'link' }, 'Weiter einrichten →')) : null,
+    jpCrit ? h('a', { class: 'notice notice-action', href: '#/spielbetrieb' }, icon('layers', 16),
+      h('span', {}, h('strong', {}, `Spielbetrieb Jugend: ${jpCrit} Spiel(e) mit kritischem Hinweis. `), 'Zum Beispiel fehlt ein Fahrer oder Betreuer – gelöst wird im Jugendplaner.'), h('span', { class: 'link' }, 'Ansehen →')) : null,
     h('div', { class: 'stats' },
       stat(d.totals.mine, 'meine offenen', '#/aufgaben?owner=me'),
       stat(d.totals.ueberfaellig, 'überfällig', '#/aufgaben?due=ueberfaellig', 'tone-red'),

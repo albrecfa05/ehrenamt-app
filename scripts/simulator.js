@@ -16,9 +16,10 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const WELT_PORT = Number(process.env.WELT_PORT || 3002);
 const APP_PORT = Number(process.env.APP_PORT || 3004);
-const simDir = path.join(root, 'data-simulator');
+const simDir = path.resolve(root, process.env.SIM_DATA_DIR || 'data-simulator');
 
 if (process.argv.includes('--neu')) {
+  if (!/data-simulator/.test(path.basename(simDir))) { console.error('Abbruch: --neu nur für data-simulator*-Ordner.'); process.exit(1); }
   fs.rmSync(simDir, { recursive: true, force: true });
   console.log('data-simulator/ geleert – die Vereinswelt beginnt von vorn.');
 }
@@ -51,6 +52,8 @@ if (neu) {
   save(true);
 }
 restoreClock();
+// Ältere Welten ohne Jugendplaner nachrüsten
+if (!W().jp) { const { jugendplanerFor } = await import('../simulator/welt/verein.js'); W().jp = jugendplanerFor(W().games); save(true); }
 
 const app = createServer();
 const welt = createWeltServer({ appUrl: `http://localhost:${APP_PORT}`, base: `http://localhost:${WELT_PORT}` });

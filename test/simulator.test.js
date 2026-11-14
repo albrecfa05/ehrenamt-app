@@ -104,6 +104,11 @@ test('Kapitel 1: App mit den Vereinsunterlagen einrichten', async () => {
   }
   r = await mia.post('/api/setup/preset', { preset: 'umfassend', approve_examples: true });
   assert.equal(r.status, 200, JSON.stringify(r.data));
+  // Jugendplaner der Vereinswelt anbinden
+  r = await mia.put('/api/jugendplaner', { area_id: ctx.ttv });
+  assert.equal(r.status, 200);
+  r = await mia.post('/api/jugendplaner/sync');
+  assert.equal(r.status, 200, JSON.stringify(r.data));
   await mia.post('/api/setup/step', { key: 'start' });
   const s = await status();
   assert.deepEqual(s.einrichtung.filter(c => !c.ok).map(c => c.key), [], 'Kapitel 1 vollständig');
@@ -187,4 +192,26 @@ test('Eingang erfassen mit Anhang (z. B. PDF aus dem Briefkasten)', async () => 
   assert.equal(r.status, 200, JSON.stringify(r.data));
   const all = [...(await mia.get('/api/inbox?status=neu')).data, ...(await mia.get('/api/inbox?status=uebernommen')).data];
   assert.equal(all.find(i => i.subject === 'Antrag per Hand erfasst').attachments[0].name, 'Antrag.pdf');
+});
+
+test('Fahrer springt ab: Jugendplaner → Aufgabe in der App → im Jugendplaner gelöst → Aufgabe erledigt', async () => {
+  // Im Saisonverlauf ist es (Tag 2) meist schon eingetreten – sonst jetzt auslösen
+  let s = (await w.get('/api/status')).data;
+  // Für den Test frisch starten, damit das betroffene Spiel sicher in der Zukunft liegt
+  if (s.ereignisse.find(e => e.key === 'fahrer_absage').state === 'laeuft') await w.post('/api/ereignis/abbrechen', { key: 'fahrer_absage' });
+  s = (await w.post('/api/ereignis', { key: 'fahrer_absage' })).data;
+  const ev = () => s.ereignisse.find(e => e.key === 'fahrer_absage');
+  assert.equal(ev().state, 'laeuft');
+  // Der Abgleich läuft beim Vorspulen schon automatisch; zur Sicherheit noch einmal von Hand
+  let r = await mia.post('/api/jugendplaner/sync');
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  s = (await w.post('/api/pruefen', {})).data;
+  assert.equal(ev().checks[0].ok, true, 'Lücke erkannt');
+  const jp = (await w.get('/api/jugendplaner')).data;
+  const open = jp.games.filter(g => !g.drivers && !g.cancelled);
+  for (const g of open) await w.post('/api/jugendplaner/set', { id: g.id, field: 'drivers', value: 'Ute Fichte' });
+  r = await mia.post('/api/jugendplaner/sync');
+  assert.ok(r.data.closed >= 1, JSON.stringify(r.data));
+  s = (await w.post('/api/pruefen', {})).data;
+  assert.equal(ev().state, 'geloest', JSON.stringify(ev().checks));
 });

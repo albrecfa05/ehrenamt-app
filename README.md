@@ -101,6 +101,7 @@ führt durch die Punkte 1–5, 7, 8 und 10. Die vollständige Liste:
 | [docs/EINRICHTUNG.md](docs/EINRICHTUNG.md) | Leere App, Einrichtungsassistent, die beiden Datenschutz-Schalter |
 | [docs/SIMULATOR.md](docs/SIMULATOR.md) | Vorstandsarbeit-Simulator: Demo-Verein, Zeitraffer, Szenarien und ihre Quellen |
 | [docs/ANFORDERUNGEN.md](docs/ANFORDERUNGEN.md) | Jede Anforderung des Lastenhefts → Umsetzung → Test |
+| [docs/JUGENDPLANER.md](docs/JUGENDPLANER.md) | Jugendplaner anbinden: Spielbetrieb Jugend, Hinweise als Aufgaben, Kalender, Anmeldung |
 | [docs/KI.md](docs/KI.md) | KI-Assistent: Automatisierungen mit Claude entwerfen – was übertragen wird, Kosten, Einrichtung |
 | [docs/IDEEN.md](docs/IDEEN.md) | Was man als Nächstes bauen könnte |
 | [docs/OFFENE-PUNKTE.md](docs/OFFENE-PUNKTE.md) | Was noch zu entscheiden ist und welche Annahmen getroffen wurden |

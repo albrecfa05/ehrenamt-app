@@ -146,3 +146,4 @@ Datenklasse, zugeordneten Textvorlagen und Rechnern angelegt. Neue Vorgangstypen
 | Vorstandsarbeit-Simulator: eigenständige Vereinswelt (Postfächer, Briefkasten, WhatsApp, Vereinsordner, click-TT, Microsoft 365) neben einer leeren App; Kapitel 1 Einrichtung, Kapitel 2 mit 17 Ereignissen, Zeitraffer, Selbstprüfung | Kap. 8 (Einführung, Schulung), 9 (Abnahme) | `npm run simulator`; `test/simulator.test.js` |
 | Eingang erfassen mit Anhängen (eingescannte Post, Fotos aus Messengern) | ABL-1, AUT-4 | Eingang → Eingang erfassen |
 | Zentrale Uhr (Zeitraffer im Simulator; in der echten App immer Echtzeit) | – | `server/clock.js` |
+| Anbindung TTV-Jugendplaner: Spielbetrieb Jugend lesen, Hinweise ohne Namen, Aufgaben für den Jugendwart mit Selbst-Erledigung, Kalender-Abo, Anmeldung per gemeinsamem Schlüssel | VOR-14, 5.7, DAT-2 | Seite „Spielbetrieb Jugend“; `docs/JUGENDPLANER.md`; `test/jugendplaner.test.js` |

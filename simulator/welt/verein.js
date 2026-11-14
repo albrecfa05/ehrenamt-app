@@ -7,6 +7,10 @@ import { addDays, formatDateDe, today } from '../../server/util.js';
 import { clockNow } from '../../server/clock.js';
 import { makePdf, textPdf } from './pdf.js';
 import { initWelt, putFile, newId } from './zustand.js';
+import { makeJugendplaner } from './jugendplaner.js';
+
+/** Jugendplaner-Stand passend zu den Erwachsenen-Spielen der Welt. */
+export const jugendplanerFor = (games) => makeJugendplaner(games.filter(g => g.team !== 'jugend').map(g => ({ date: g.date, time: g.time, team: g.team, home: g.home, opponent: g.summary.replace(/TTV Musterhausen( II)?/, '').replace(/^ – | – $/g, '').trim() })));
 
 export const VEREIN = { name: 'Tischtennisverein Musterhausen 1962 e. V.', kurz: 'TTV Musterhausen', ort: 'Musterhausen', gegruendet: 1962, mitglieder: 64 };
 export const HALL = 'Sporthalle Musterhausen, Schulstraße 1';
@@ -225,6 +229,7 @@ export function erschaffen() {
     },
     games: makeSeason(start),
   };
+  s.jp = jugendplanerFor(s.games);
   initWelt(s);
 
   const doc = (title, kind, description, file, text = null) => s.docs.push({ id: newId('d'), title, kind, description, file, text });

@@ -5,6 +5,7 @@
 //  - Regeln mit Auslöser Zeitplan und Frist (AUT-2, AUT-13)
 //  - Löschfrist für Anhänge mit gelben Daten (DAT-2, NFA-12), sobald eingestellt
 
+import { sync as syncJugendplaner } from './jugendplaner.js';
 import fs from 'node:fs';
 import { q, getSetting, setSetting } from '../db.js';
 import { addDays, audit, berlinClock, formatDateDe, nowIso, today } from '../util.js';
@@ -174,6 +175,11 @@ function networkJobs(now) {
   if (isOn('spielplan_import') && hour >= Number(param('spielplan_import', 'stunde') ?? 6) && getSetting('spielplan_letzter_abruf', null) !== day) {
     setSetting('spielplan_letzter_abruf', day);
     track(syncAllFeeds().catch(err => console.error('[Spielplan] Fehler:', err.message)));
+  }
+  if (isOn('jugendplaner_abgleich')) {
+    const every = Math.max(1, Number(param('jugendplaner_abgleich', 'stunden')) || 3) * 3600_000;
+    const last = Date.parse(getSetting('jugendplaner_stand', null)?.at || 0) || 0;
+    if (now.getTime() - last >= every) track(syncJugendplaner().catch(err => console.error('[Jugendplaner] Fehler:', err.message)));
   }
 }
 

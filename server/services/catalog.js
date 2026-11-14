@@ -3,6 +3,7 @@
 // Die Stufe zeigt, wie weit der Eintrag geht (Kap. 6). Einträge ab Stufe 3 führen nie selbst aus,
 // sondern legen Freigaben an. Gesperrtes (Zahlungen, Bestellungen, Mailversand) gibt es hier nicht.
 
+import { isConfigured as jugendplanerConfigured } from '../connectors/jugendplaner.js';
 import { getSetting, setSetting } from '../db.js';
 import { keyPresent as claudeKeyPresent } from '../connectors/claude.js';
 import { gelbLokal } from '../privacy.js';
@@ -88,6 +89,10 @@ export const CATALOG = [
     params: [] },
 
   // ----- Daten -----
+  { key: 'jugendplaner_abgleich', group: 'Spielbetrieb (Jugendplaner)', label: 'Jugendplaner abgleichen', level: 2, default: true, requires: ['jugendplaner'], source: 'VOR-14, 5.7',
+    description: 'Liest regelmäßig den Stand des Jugendplaners (Spiele, Zusagen, Fahrer/Betreuer) und zeigt Hinweise unter „Spielbetrieb“. Übernommen werden nur Termine und Hinweise ohne Namen. Kritische Hinweise (niemand fährt, Fahrer spielt selbst …) werden zur Aufgabe für die Jugendleitung und schließen sich, sobald sie im Jugendplaner gelöst sind.',
+    params: [{ name: 'stunden', label: 'Alle … Stunden abgleichen', type: 'number', default: 3 }, { name: 'aufgaben', label: 'Aufgaben für kritische Hinweise anlegen', type: 'boolean', default: true }] },
+
   { key: 'mitglieder_pruefung', group: 'Mitglieder (meinVerein)', label: 'Beitragsstufen aus meinVerein-Export prüfen', level: 2, default: false, requires: ['gelb_lokal'], source: 'VOR-2, 5.2',
     description: 'Ein Admin lädt den Excel-/CSV-Export aus meinVerein hoch; die App ermittelt anstehende Stufenwechsel und legt eine Aufgabe mit Namen an. Der Export wird nicht gespeichert.',
     params: [] },
@@ -128,6 +133,7 @@ export function requirementsMet(c) {
     if (r === 'm365' && !m365Check()) missing.push('Microsoft 365 ist nicht verbunden (Adminpanel → Verbindungen)');
     if ((r === 'gelb_lokal' || r === 'datenschutz') && !gelbLokal()) missing.push('Schalter „Gelbe Daten lokal verarbeiten“ ist aus (Einstellungen)');
     if (r === 'claude' && !claudeKeyPresent()) missing.push('Kein Claude-API-Schlüssel (ANTHROPIC_API_KEY in der .env)');
+    if (r === 'jugendplaner' && !jugendplanerConfigured()) missing.push('Jugendplaner ist nicht verbunden (JUGENDPLANER_URL und JUGENDPLANER_SECRET in der .env)');
   }
   return { ok: !missing.length, missing };
 }

@@ -35,7 +35,7 @@ const main = $('#main');
 const NAV = [
   ['', [['start', '🏠', 'Start und Geschichte']]],
   ['Wie bisher im Verein', [['postfach', '✉️', 'Postfächer', () => Object.values(S?.unread.mail || {}).reduce((a, b) => a + b, 0)], ['briefkasten', '📬', 'Briefkasten', () => S?.unread.post],
-    ['whatsapp', '💬', 'WhatsApp', () => Object.values(S?.unread.chats || {}).reduce((a, b) => a + b, 0)], ['ordner', '🗂️', 'Vereinsordner'], ['clicktt', '🏓', 'click-TT']]],
+    ['whatsapp', '💬', 'WhatsApp', () => Object.values(S?.unread.chats || {}).reduce((a, b) => a + b, 0)], ['ordner', '🗂️', 'Vereinsordner'], ['clicktt', '🏓', 'click-TT'], ['jugendplaner', '🚗', 'Jugendplaner']]],
   ['Technik', [['m365', '☁️', 'Microsoft 365', () => S?.unread.drafts]]],
 ];
 
@@ -210,8 +210,34 @@ async function viewM365() {
     h('section', { class: 'card' }, m.aussen.length ? h('ul', { class: 'log' }, m.aussen.map(a => h('li', {}, h('time', {}, dt(a.at)), h('span', {}, { entwurf: '✉️ ', termin: '📅 ', ablage: '📁 ', claude: '🤖 ' }[a.kind] || '', a.text, a.file ? ' · ' : '', a.file ? h('a', { href: `/datei/${a.file}` }, 'Datei') : null)))) : h('p', { class: 'muted' }, 'Noch nichts.')));
 }
 
+// ---------- Jugendplaner ----------
+async function viewJugendplaner() {
+  const jp = await api('/api/jugendplaner');
+  const team = (id) => jp.teams.find(t => t.id === id) || { name: id, players: [], reserves: [], minPlayers: 3 };
+  const set = (b, msg) => act(() => api('/api/jugendplaner/set', b), msg);
+  const cycle = { '': 'y', y: 'n', n: '' };
+  clear(main, h('h1', {}, 'Jugendplaner'),
+    h('p', { class: 'muted small' }, 'Der Jugendplaner des Vereins (Nachbau mit Fantasiedaten): Spiele der Jugend, Zusagen der Kinder, Fahrer und Betreuer. Hier handelst du als Jugendleitung bzw. als Eltern. Die Ehrenamt-App liest nur mit und meldet Lücken.'),
+    h('section', { class: 'card' }, h('div', { class: 'copybox' }, h('span', { class: 'small muted' }, 'Adresse für die App (steht im Simulator schon in der .env):'), h('code', {}, jp.url))),
+    h('h2', {}, 'Nächste Spiele'),
+    h('div', { class: 'grid' }, jp.games.map(g => {
+      const t = team(g.team);
+      const roster = [...(t.players || []), ...(t.reserves || [])];
+      const yes = Object.values(g.avail || {}).filter(v => v === 'y').length;
+      const drv = h('input', { list: 'eltern', value: g.drivers || '', placeholder: 'Fahrer/Betreuer' });
+      return h('article', { class: `card ev ${g.cancelled ? '' : g.drivers ? 'geloest' : 'laeuft'}` },
+        h('div', { class: 'row' }, h('h3', {}, `${t.name} ${g.home ? 'gegen' : 'bei'} ${g.opponent}`), h('span', { class: 'spacer' }), h('span', { class: `tag ${g.cancelled ? '' : g.drivers ? 'green' : 'orange'}` }, g.cancelled ? 'abgesagt' : g.drivers ? 'Fahrer fest' : g.respTeam ? 'Mannschaft sucht' : 'offen')),
+        h('div', { class: 'meta' }, `${d(g.date)} · ${g.time || '–'} Uhr · ${g.home ? 'Heimspiel' : g.hall} · Zusagen ${yes}/${t.minPlayers}`),
+        h('div', { class: 'row' }, drv, h('button', { class: 'small primary', onclick: () => set({ id: g.id, field: 'drivers', value: drv.value }, 'Im Jugendplaner gespeichert') }, 'Eintragen')),
+        h('div', { class: 'row small' }, roster.map(p => h('button', { class: `small ${g.avail?.[p] === 'y' ? 'on' : ''}`, title: 'Zusage → Absage → keine Antwort', onclick: () => set({ id: g.id, field: 'avail', player: p, value: cycle[g.avail?.[p] || ''] }) },
+          `${g.avail?.[p] === 'y' ? '✓' : g.avail?.[p] === 'n' ? '✕' : '?'} ${p.split(' ')[0]}`))),
+        h('div', { class: 'row' }, h('button', { class: 'small', onclick: () => set({ id: g.id, field: 'cancelled', value: !g.cancelled }) }, g.cancelled ? 'Wieder ansetzen' : 'Spiel absagen')));
+    })),
+    h('datalist', { id: 'eltern' }, jp.parents.map(p => h('option', { value: p }))));
+}
+
 // ---------- Router ----------
-const VIEWS = { start: viewStart, postfach: viewPostfach, briefkasten: viewBriefkasten, whatsapp: viewWhatsapp, ordner: viewOrdner, clicktt: viewClicktt, m365: viewM365 };
+const VIEWS = { jugendplaner: viewJugendplaner, start: viewStart, postfach: viewPostfach, briefkasten: viewBriefkasten, whatsapp: viewWhatsapp, ordner: viewOrdner, clicktt: viewClicktt, m365: viewM365 };
 async function render() {
   document.body.classList.remove('nav-open');
   const key = location.hash.slice(1).split('/')[0] || 'start';

@@ -71,6 +71,8 @@ export const EINRICHTUNG = [
     tip: 'Vereinsordner → Jahresplan. Z. B. MV am dritten Freitag im März, Beitragseinzug zum 1. März.' },
   { key: 'sponsoren', label: 'Sponsoren erfasst (mindestens 3)', ok: () => one('SELECT COUNT(*) AS n FROM sponsors').n >= 3,
     tip: 'Vereinsordner → Sponsorenübersicht; App: Sponsoren → „Sponsor anlegen“ mit Laufzeitende.' },
+  { key: 'jugendplaner', label: 'Jugendplaner angebunden (Bereich gewählt und abgeglichen)', ok: () => !!(getSetting('jugendplaner', {}) || {}).area_id && !!getSetting('jugendplaner_stand', null)?.counts && !getSetting('jugendplaner_stand', null)?.error,
+    tip: 'Die Zugangsdaten setzt der Simulator selbst. App: Adminpanel → Verbindungen → Jugendplaner: Bereich TTV Musterhausen wählen, „Jetzt abgleichen“, „Spielplan-Abo anlegen“.' },
   { key: 'automatik', label: 'Voreinstellung für Automatisierungen gewählt', ok: () => !!getSetting('einrichtung_preset', null),
     tip: 'Assistent Schritt 6.' },
   { key: 'fertig', label: 'Einrichtung abgeschlossen', ok: () => !!(getSetting('einrichtung', {}) || {}).done,
@@ -132,6 +134,27 @@ export const EREIGNISSE = [
     tips: ['Briefkasten → „Scannen und ans Postfach“: der Antrag kommt als Mail mit PDF. Oder PDF herunterladen und in der App „Eingang erfassen“ mit Anhang (Kanal Post).',
       'Beim Übernehmen: Vorgang VOR-1 „Neuaufnahme“, Datenklasse gelb.', 'Status „Wartet“ – worauf: SEPA-Mandat. Die Antwort der Familie trägt die Vorgangsnummer im Betreff und wird zugeordnet.',
       'Die Willkommensmail kommt aus der Textvorlage – oder automatisch per Regel, wenn der Schalter „Gelb lokal“ an ist und die Beispielregel freigegeben wurde.'],
+  },
+  {
+    key: 'fahrer_absage', title: 'Jugend: Fahrer springt ab', tag: 2, kanal: 'WhatsApp + Jugendplaner', difficulty: 1,
+    problem: 'Fahrdienste für Jugendspiele hängen an wenigen Eltern. Sagt jemand kurzfristig ab, merkt es der Vorstand oft erst am Spieltag.',
+    start() {
+      const d = today();
+      const jp = W().jp;
+      const g = jp.games.filter(x => !x.cancelled && x.date >= addDays(d, 2) && x.date <= addDays(d, 10)).sort((a, b) => a.date.localeCompare(b.date))[0] || jp.games.find(x => x.date >= d);
+      const who = g.drivers || 'Petra Ahorn';
+      g.drivers = ''; g.respTeam = '';
+      jp.rev = (jp.rev || 0) + 1;
+      save();
+      whatsapp('eltern', who, `Sorry, wir können am ${formatDateDe(g.date)} doch nicht zur ${jp.youthTeams.find(t => t.id === g.team)?.name || g.team} fahren – ich hab’s im Jugendplaner rausgenommen.`);
+      return { game: g.id, date: g.date };
+    },
+    checks: [
+      { label: 'Die App hat die Lücke erkannt (Aufgabe aus dem Jugendplaner-Abgleich)', ok: (c, d) => !!one('SELECT 1 FROM tasks WHERE parent_source = ?', `jugendplaner:${d.game}`) },
+      { label: 'Im Jugendplaner ist wieder ein Fahrer eingetragen', ok: (c, d) => !!W().jp.games.find(g => g.id === d.game)?.drivers },
+      { label: 'Die Aufgabe hat sich nach dem nächsten Abgleich selbst erledigt', ok: (c, d) => !!W().jp.games.find(g => g.id === d.game)?.drivers && one('SELECT status FROM tasks WHERE parent_source = ? ORDER BY id DESC', `jugendplaner:${d.game}`)?.status === 'erledigt' },
+    ],
+    tips: ['Jugendplaner in der App verbinden (Kapitel 1). Der Abgleich läuft alle paar Stunden und beim Vorspulen – oder „Jetzt abgleichen“ unter Spielbetrieb Jugend.', 'Neuen Fahrer im Jugendplaner der Vereinswelt eintragen (Menü „Jugendplaner“) – nicht in der App: dort wird nur angezeigt.', 'Danach erneut abgleichen; die Aufgabe schließt sich mit Kommentar.'],
   },
   {
     key: 'sr_absage', title: 'Schiedsrichter sagt kurzfristig ab', tag: 3, kanal: 'Postfach Bezirk', difficulty: 1,

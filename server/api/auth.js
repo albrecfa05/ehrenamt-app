@@ -9,6 +9,7 @@ import {
 import { audit, bad, HttpError, nowIso, str } from '../util.js';
 import { areaIds } from '../access.js';
 import { clockOffset } from '../clock.js';
+import { isConfigured as jpConfigured } from '../connectors/jugendplaner.js';
 
 const publicUser = (u) => u && ({
   id: u.id, name: u.name, login: u.login, role: u.role, must_change_pw: !!u.must_change_pw,
@@ -86,6 +87,7 @@ get('/api/me', ({ user }) => {
   const approvals = user.role === 'admin' ? q.get(`SELECT COUNT(*) AS n FROM approvals WHERE status = 'offen'`).n : 0;
   const inbox = q.get(`SELECT COUNT(*) AS n FROM inbox WHERE status = 'neu'`).n;
   return { user: publicUser(user), areas, unread, unseenChangelog: unseen, counts: { approvals, inbox }, clock_offset: clockOffset(), simulator: process.env.TTE_SIMULATOR === '1', welt_url: process.env.TTE_SIMULATOR === '1' ? (process.env.TTE_WELT_URL || null) : null,
+    jugendplaner: jpConfigured(),
     setup_open: user.role === 'admin' && getSetting('einrichtung', null)?.done === false };
 });
 

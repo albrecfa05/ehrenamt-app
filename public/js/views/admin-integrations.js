@@ -104,7 +104,7 @@ export async function connectionsTab(el) {
   // Spielpläne
   const feedCard = h('section', { class: 'card' },
     h('header', { class: 'card-head' }, h('h2', {}, icon('calendar', 18), ' Spielpläne (Kalender-Abos)'), button('Spielplan hinzufügen', () => feedDialog({}, () => connectionsTab(el)), { kind: 'primary', iconName: 'plus' })),
-    d.feeds.length ? h('table', { class: 'table' }, h('thead', {}, h('tr', {}, h('th', {}, 'Name'), h('th', {}, 'Bereich'), h('th', {}, 'Heimspiele'), h('th', {}, 'Letzter Abruf'), h('th', {}))),
+    d.feeds.length ? h('div', { class: 'table-scroll' }, h('table', { class: 'table' }, h('thead', {}, h('tr', {}, h('th', {}, 'Name'), h('th', {}, 'Bereich'), h('th', {}, 'Heimspiele'), h('th', {}, 'Letzter Abruf'), h('th', {}))),
       h('tbody', {}, d.feeds.map(f => h('tr', { class: f.active ? '' : 'inactive' },
         h('td', {}, h('strong', {}, f.name), h('div', { class: 'small muted' }, `${f.upcoming} künftige Termine`)),
         h('td', {}, f.area_name),
@@ -112,7 +112,7 @@ export async function connectionsTab(el) {
         h('td', { class: 'small' }, f.last_fetch_at ? relTime(f.last_fetch_at) : 'noch nie', h('div', { class: f.last_status.startsWith('Fehler') ? 'warn-text' : 'muted' }, f.last_status)),
         h('td', { class: 'actions' },
           button('Jetzt abrufen', async () => { try { const r = await api.post(`/api/feeds/${f.id}/sync`); toast(`${r.read} gelesen, ${r.added} neu, ${r.changed} geändert, ${r.tasks} Aufgabe(n)`); connectionsTab(el); } catch (e) { errorToast(e); } }, { kind: 'mini' }),
-          iconButton('edit', () => feedDialog(f, () => connectionsTab(el)), 'Bearbeiten')))))) :
+          iconButton('edit', () => feedDialog(f, () => connectionsTab(el)), 'Bearbeiten'))))))) :
       h('p', { class: 'muted pad' }, 'Noch kein Spielplan. In click-TT/nuLiga gibt es je Mannschaft einen Kalender-Export (iCal/ICS) – dessen Adresse hier eintragen.'));
 
   // meinVerein
@@ -121,7 +121,27 @@ export async function connectionsTab(el) {
     h('p', { class: 'small' }, 'Export aus meinVerein (CSV, Spalten z. B. Vorname, Nachname, Geburtsdatum, Beitragsart) hochladen. Die App ermittelt, wer zum Stichtag in eine andere Beitragsstufe wechselt, und legt dafür eine Aufgabe mit den Namen an. Der Export selbst wird nicht gespeichert.'),
     state.auto.mitglieder_pruefung ? membersForm() : h('p', { class: 'warn-text small' }, icon('lock', 12), ' Gesperrt, bis die Datenschutzfrage geklärt und die Automatisierung eingeschaltet ist (gelbe Daten).'));
 
-  clear(el, h('div', { class: 'grid-2' }, h('div', { class: 'col' }, m365Card), h('div', { class: 'col' }, feedCard, mvCard)));
+  clear(el, h('div', { class: 'grid-2' }, h('div', { class: 'col' }, m365Card, await jugendplanerCard(() => connectionsTab(el))), h('div', { class: 'col' }, feedCard, mvCard)));
+}
+
+// ---------- Jugendplaner ----------
+async function jugendplanerCard(reload) {
+  const d = await api.get('/api/jugendplaner');
+  const c = d.connection, st = d.stand;
+  const area = select(areaOptions('— Bereich wählen —'), d.settings.area_id || '');
+  area.addEventListener('change', async () => { try { await api.put('/api/jugendplaner', { area_id: area.value ? Number(area.value) : null }); toast('Gespeichert'); reload(); } catch (e) { errorToast(e); } });
+  return h('section', { class: 'card pad' },
+    h('h2', {}, icon('layers', 18), ' Jugendplaner (Spielbetrieb Jugend)'),
+    h('div', { class: `conn-status ${c.configured && st && !st.error ? 'ok' : c.configured ? 'half' : 'off'}` }, icon(c.configured && st && !st.error ? 'check' : 'alert', 16),
+      h('div', {}, h('strong', {}, !c.configured ? 'Nicht eingerichtet' : !st ? 'Zugang vorhanden – noch nicht abgeglichen' : st.error ? 'Letzter Abgleich fehlgeschlagen' : `Verbunden · ${st.club || ''} ${st.season || ''}`),
+        h('div', { class: 'small muted' }, c.configured ? `${c.host} · Anmeldung über ${c.auth === 'schluessel' ? 'gemeinsamen Schlüssel (mit automatischer Anmeldung)' : 'PIN (ohne automatische Anmeldung)'}` : 'JUGENDPLANER_URL und JUGENDPLANER_SECRET in die .env eintragen (Anleitung: docs/JUGENDPLANER.md).'),
+        st ? h('div', { class: `small ${st.error ? 'warn-text' : 'muted'}` }, st.error ? st.error : `Letzter Abgleich ${relTime(st.at)}: ${st.counts.spiele} künftige Spiele, ${st.counts.kritisch} mit kritischem Hinweis`) : null)),
+    h('div', { class: 'form-grid' }, field('Bereich', area, 'Hier entstehen die Aufgaben (an das Amt „Jugendwart“).')),
+    h('div', { class: 'btn-row' },
+      button('Jetzt abgleichen', async () => { try { const r = await api.post('/api/jugendplaner/sync'); toast(`${r.counts.spiele} Spiele, ${r.counts.kritisch} kritisch · ${r.created} Aufgabe(n) neu, ${r.closed} erledigt${r.area ? '' : ' – ohne Bereich keine Aufgaben'}`); reload(); } catch (e) { errorToast(e); } }, { kind: 'primary', iconName: 'refresh', disabled: !c.configured }),
+      button(d.feed ? 'Spielplan-Abo vorhanden' : 'Spielplan-Abo anlegen', async () => { try { await api.post('/api/jugendplaner/feed'); toast('Spielplan-Abo angelegt – die Jugendspiele erscheinen im Kalender'); reload(); } catch (e) { errorToast(e); } }, { kind: 'ghost', iconName: 'calendar', disabled: !st || d.feed }),
+      button('Zum Jugendplaner', async () => { try { const r = await api.get('/api/jugendplaner/open'); window.open(r.url, 'jugendplaner'); } catch (e) { errorToast(e); } }, { kind: 'ghost', iconName: 'external', disabled: !c.url })),
+    h('p', { class: 'hint mt' }, 'Die App liest nur. Übernommen werden Spieltermine und Hinweise ohne Namen; Kinder-, Eltern- und Fahrernamen bleiben im Jugendplaner.'));
 }
 
 async function feedDialog(f, done) {

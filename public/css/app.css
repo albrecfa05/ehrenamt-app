@@ -727,3 +727,17 @@ input.switch:checked::after { transform: translateX(16px); }
 .setup-body .inline-form { flex-wrap: wrap; }
 .setup-body .inline-form input { flex: 1 1 160px; min-width: 0; }
 .setup-body details .table select { min-width: 130px; }
+
+/* ---------- Spielbetrieb (Jugendplaner) ---------- */
+.jp-game { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+.jp-game:last-child { border-bottom: 0; }
+.jp-main { min-width: 0; }
+.jp-issues { list-style: none; padding: 0; margin: 6px 0 0; font-size: .86rem; }
+.jp-issues li { padding-left: 14px; position: relative; }
+.jp-issues li::before { content: "•"; position: absolute; left: 2px; color: var(--muted); }
+.jp-issues li.tone-red { color: var(--red); }
+.jp-issues li.tone-amber { color: var(--amber); }
+.pill-ok { background: var(--green-soft); color: var(--green); }
+.pill-warn { background: var(--amber-soft); color: var(--amber); }
+.table-scroll { overflow-x: auto; }
+.grid-2 > .col { min-width: 0; }

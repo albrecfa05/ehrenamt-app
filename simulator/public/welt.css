@@ -131,3 +131,6 @@ th { color: var(--muted); font-weight: 600; font-size: .8rem; }
 
 .check { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; cursor: pointer; }
 .check input { width: auto; flex: none; margin-top: 3px; }
+
+.row button.on { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+.ev .row input { flex: 1; min-width: 0; }
