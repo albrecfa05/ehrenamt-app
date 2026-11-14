@@ -25,8 +25,40 @@ function toast(msg, err = false) { const t = $('#toast'); t.textContent = msg; t
 const fail = (e) => toast(e.message, true);
 const dt = (iso) => new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 const d = (s) => new Date(s + 'T12:00:00').toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
-async function copy(text, what = 'Text') { try { await navigator.clipboard.writeText(text); toast(`${what} kopiert`); } catch { toast('Kopieren nicht möglich – bitte markieren und kopieren.', true); } }
-const fileLink = (f, label) => h('span', { class: 'att' }, '📎 ', f.name, h('a', { href: `/datei/${f.id}?ansehen`, target: '_blank' }, 'ansehen'), '·', h('a', { href: `/datei/${f.id}` }, label || 'herunterladen'));
+// Kopieren mit Rückfallebene (manche eingebetteten Browser sperren die Zwischenablage-Schnittstelle)
+async function copy(text, what = 'Text') {
+  try { await navigator.clipboard.writeText(text); toast(`${what} kopiert`); return; } catch { /* Rückfall */ }
+  const ta = h('textarea', { style: 'position:fixed;top:-1000px' }); ta.value = text; document.body.append(ta); ta.select();
+  let ok = false; try { ok = document.execCommand('copy'); } catch { ok = false; }
+  ta.remove();
+  if (ok) toast(`${what} kopiert`); else showModal(what, h('div', {}, h('p', { class: 'small muted' }, 'Kopieren ging hier nicht automatisch – Text markieren (Strg+A) und kopieren (Strg+C):'), (() => { const t = h('textarea', { style: 'min-height:50vh' }); t.value = text; setTimeout(() => t.select(), 50); return t; })()));
+}
+
+// Einfaches Fenster auf der Seite (statt neuer Tabs – die gibt es nicht in jedem Browser)
+function showModal(title, content) {
+  const close = () => box.remove();
+  const box = h('div', { class: 'modal-bg', onclick: (e) => { if (e.target === box) close(); } },
+    h('div', { class: 'modal' }, h('div', { class: 'row' }, h('h3', {}, title), h('span', { class: 'spacer' }), h('button', { class: 'small', onclick: close }, 'Schließen')), content));
+  document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
+  document.body.append(box);
+}
+async function preview(f) {
+  try {
+    const v = await api(`/vorschau/${f.id}`);
+    const body = v.kind === 'image' ? h('img', { src: v.src, alt: f.name, style: 'max-width:100%' })
+      : v.kind === 'pdf' ? h('div', { class: 'paper-view' }, v.lines.map(l => h(l.bold ? 'strong' : 'div', { class: l.size >= 14 ? 'big' : l.size <= 9 ? 'tiny' : '' }, l.text)))
+      : h('pre', { class: 'text-view' }, v.text);
+    showModal(f.name, h('div', {}, body, h('div', { class: 'row', style: 'margin-top:10px' },
+      v.kind !== 'image' ? h('button', { class: 'small', onclick: () => copy(v.kind === 'pdf' ? v.lines.map(l => l.text).join('\n') : v.text, 'Inhalt') }, 'Inhalt kopieren') : null,
+      h('button', { class: 'small primary', onclick: () => toPostfach(f) }, 'Ans Vorstandspostfach schicken'),
+      h('a', { href: `/datei/${f.id}`, download: f.name }, h('button', { class: 'small' }, 'Herunterladen')))));
+  } catch (e) { fail(e); }
+}
+const toPostfach = (f) => act(() => api(`/api/datei/${f.id}/mailen`, {}), `„${f.name}“ liegt jetzt im Vorstandspostfach – in der App „Postfächer abrufen“`);
+const fileLink = (f) => h('span', { class: 'att' }, '📎 ', f.name,
+  h('a', { href: '#', onclick: (e) => { e.preventDefault(); preview(f); } }, 'ansehen'), '·',
+  h('a', { href: '#', onclick: (e) => { e.preventDefault(); toPostfach(f); }, title: 'Als Mail mit Anhang ans Vorstandspostfach – von dort holt die App sie ab' }, 'ans Postfach'), '·',
+  h('a', { href: `/datei/${f.id}`, download: f.name }, 'herunterladen'));
 
 let S = null;      // Status
 let WELT = null;   // feste Infos
@@ -91,7 +123,15 @@ async function viewStart() {
       h('div', { class: 'stat' }, h('strong', {}, S.health.ueberfaellig), h('span', {}, 'davon überfällig')),
       h('div', { class: 'stat' }, h('strong', {}, S.health.eingang), h('span', {}, 'im Eingang der App'))),
     h('h2', {}, 'Kapitel 1 · Die App einrichten'),
-    h('section', { class: 'card' }, p, h('ul', { class: 'checklist' }, e1.map(c => h('li', { class: c.ok ? 'ok' : '' }, h('span', { class: 'mark' }, c.ok ? '✓' : ''), h('div', {}, h('span', {}, c.label), c.ok ? null : h('details', {}, h('summary', {}, 'Wie?'), c.tip)))))),
+    h('section', { class: 'card' },
+      h('div', { class: 'row' }, sw('zweiterVerein', 'Zweiten Verein (SV Beispieldorf) mit einrichten'), h('span', { class: 'spacer' }),
+        e1.some(c => !c.ok && !c.skipped && c.auto) ? h('button', { class: 'small primary', onclick: () => fill('alle') }, '🪄 Alles Offene ausfüllen lassen') : null),
+      p,
+      h('ul', { class: 'checklist' }, e1.map(c => h('li', { class: c.ok ? 'ok' : c.skipped ? 'skipped' : '' }, h('span', { class: 'mark' }, c.ok ? '✓' : c.skipped ? '–' : ''),
+        h('div', {}, h('div', { class: 'row' }, h('span', {}, c.label, c.skipped ? h('em', { class: 'muted small' }, ' (übersprungen)') : null), h('span', { class: 'spacer' }),
+          !c.ok && !c.skipped && c.auto ? h('button', { class: 'small', onclick: () => fill(c.key) }, 'Ausfüllen lassen') : null,
+          !c.ok ? h('button', { class: 'small', onclick: () => act(() => api('/api/kapitel/ueberspringen', { key: c.key, on: !c.skipped })) }, c.skipped ? 'Wieder aufnehmen' : 'Überspringen') : null),
+          c.ok || c.skipped ? null : h('details', {}, h('summary', {}, 'Wie mache ich das selbst?'), c.tip)))))),
     h('h2', {}, 'Kapitel 2 · Vereinsalltag'),
     h('p', { class: 'muted small' }, 'Typische Probleme von Sportvereinen. Mit Saisonverlauf treten sie an ihrem Tag ein; du kannst sie auch sofort auslösen.'),
     ev.some(e => e.state === 'laeuft') ? h('div', { class: 'grid' }, ev.filter(e => e.state === 'laeuft').map(evCard)) : null,
@@ -167,7 +207,7 @@ async function viewWhatsapp() {
       h('div', { class: 'bubbles' }, c.messages.length ? c.messages.map(m => h('div', { class: 'bubble' },
         h('time', {}, dt(m.at)), h('b', {}, m.from), m.text,
         m.files.length ? h('div', {}, m.files.map(f => fileLink(f))) : null,
-        h('div', {}, h('button', { class: 'small', onclick: () => copy(`${m.from}: ${m.text}`) }, 'Text kopieren')))) : h('div', { class: 'empty' }, 'Noch keine Nachrichten.'))));
+        h('div', { class: 'row' }, h('button', { class: 'small', onclick: () => copy(`${m.from}: ${m.text}`) }, 'Text kopieren'), h('button', { class: 'small', onclick: () => act(() => api(`/api/chats/${c.key}/${m.id}/weiterleiten`, {}), 'Ans Vorstandspostfach weitergeleitet – in der App „Postfächer abrufen“') }, 'Ans Vorstandspostfach')))) : h('div', { class: 'empty' }, 'Noch keine Nachrichten.'))));
 }
 
 // ---------- Vereinsordner ----------
@@ -178,7 +218,7 @@ async function viewOrdner() {
     h('div', { class: 'grid' }, docs.map(x => h('article', { class: 'card doc' },
       h('div', { class: 'row' }, h('h3', {}, x.title), h('span', { class: 'spacer' }), h('span', { class: `tag ${x.title.includes('meinVerein') ? 'orange' : ''}` }, x.title.includes('meinVerein') ? 'gelbe Daten' : x.kind.toUpperCase())),
       h('p', { class: 'small' }, x.description),
-      h('div', { class: 'row' }, fileLink(x.file), x.text ? h('button', { class: 'small', onclick: () => copy(x.text, x.title) }, 'Text kopieren') : null)))),
+      fileLink(x.file), h('div', { class: 'row' }, h('button', { class: 'small', onclick: async () => { if (x.text) return copy(x.text, x.title); try { const v = await api(`/vorschau/${x.file.id}`); copy(v.text ?? v.lines.map(l => l.text).join('\n'), x.title); } catch (e) { fail(e); } } }, x.kind === 'csv' ? 'CSV-Inhalt kopieren' : 'Text kopieren'))))),
     h('h2', {}, 'Vorstand und Postfächer'),
     h('section', { class: 'card' }, h('table', {}, h('thead', {}, h('tr', {}, h('th', {}, 'Name'), h('th', {}, 'Amt'), h('th', {}, 'Bereich'), h('th', {}, 'Mail'))),
       h('tbody', {}, WELT.people.map(p => h('tr', {}, h('td', {}, p.name, p.you ? ' (du)' : ''), h('td', {}, p.role, p.admin ? ' · Admin' : ''), h('td', {}, p.area), h('td', { class: 'mono' }, p.mail)))))));
@@ -243,6 +283,9 @@ async function render() {
   const key = location.hash.slice(1).split('/')[0] || 'start';
   drawNav();
   try { await (VIEWS[key] || viewStart)(); } catch (e) { clear(main, h('div', { class: 'empty' }, e.message)); }
+}
+async function fill(key) {
+  await act(async () => { const r = await api('/api/kapitel/ausfuellen', { key }); toast(r.messages.join(' · ')); return r.status; });
 }
 async function act(fn, msg) {
   $('#busy').hidden = false;

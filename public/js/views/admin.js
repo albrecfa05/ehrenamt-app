@@ -136,10 +136,10 @@ async function asana(el) {
   const area = select(areaOptions(null), state.me.areas[0]?.id);
   const out = h('div');
   let csv = null;
-  fi.addEventListener('change', async () => {
-    const f = fi.files[0];
-    if (!f) return;
-    csv = await f.text();
+  const pasted = textarea({ rows: 4, placeholder: 'Oder hier den Inhalt der CSV-Datei einfügen (z. B. aus Excel oder einer Mail kopiert)' });
+  const analyse = async (text) => {
+    csv = text;
+    if (!csv?.trim()) return;
     try {
       const p = await api.post('/api/import/asana/preview', { csv });
       const map = {};
@@ -160,11 +160,12 @@ async function asana(el) {
           } catch (e) { errorToast(e); }
         }, { kind: 'primary', iconName: 'upload' })));
     } catch (e) { errorToast(e); clear(out); }
-  });
+  };
+  fi.addEventListener('change', async () => { if (fi.files[0]) analyse(await fi.files[0].text()); });
   clear(el, h('section', { class: 'card pad narrow' },
     h('h2', {}, 'Aufgaben aus Asana übernehmen'),
     h('p', {}, 'Einmal importieren, dann ablösen. In Asana je Projekt: „…“ → Exportieren/Drucken → CSV. Ein mehrfacher Import derselben Datei legt nichts doppelt an.'),
-    h('div', { class: 'form-grid' }, field('Zielbereich', area), field('CSV-Datei', fi)), out));
+    h('div', { class: 'form-grid' }, field('Zielbereich', area), field('CSV-Datei', fi), h('div', { class: 'span-2' }, field('… oder CSV-Inhalt', pasted), button('Eingefügten Inhalt prüfen', () => analyse(pasted.value), { kind: 'ghost', iconName: 'search' }))), out));
 }
 
 // ---------- Hilfe-Texte ----------

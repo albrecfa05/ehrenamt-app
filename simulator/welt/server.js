@@ -11,7 +11,9 @@ import { handleDienst } from './dienste.js';
 import { handleJugendplaner, jpParents } from './jugendplaner.js';
 import { scanToMail } from './kanaele.js';
 import { MAILBOX, PEOPLE, TEAMS, VEREIN } from './verein.js';
-import { advance, abortEreignis, evaluate, react, sendMail, startEreignis, status } from './motor.js';
+import { advance, abortEreignis, evaluate, react, sendMail, skip, startEreignis, status } from './motor.js';
+import { ausfuellen } from './ausfuellen.js';
+import { mail } from './kanaele.js';
 import { EREIGNISSE } from './geschichte.js';
 
 const PUBLIC = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
@@ -44,7 +46,28 @@ function info(appUrl, base) {
   };
 }
 
-export function createWeltServer({ appUrl, base }) {
+/** Vorschau ohne Download: Text aus unseren PDFs (einfacher Aufbau, unkomprimiert), Text-Dateien, Bilder. */
+function vorschau(f, buf) {
+  if (/^image\//.test(f.mime)) return { kind: 'image', name: f.name, src: `data:${f.mime};base64,${buf.toString('base64')}` };
+  if (f.mime === 'application/pdf') {
+    const s = buf.toString('latin1');
+    const W1252 = { 0x80: '€', 0x84: '„', 0x85: '…', 0x91: '‘', 0x92: '’', 0x93: '“', 0x94: '”', 0x95: '•', 0x96: '–', 0x97: '—' };
+    const lines = [];
+    for (const page of s.split(/endstream/)) {
+      for (const mm of page.matchAll(/\/(F\d) ([\d.]+) Tf [\d.]+ [\d.]+ Td \(((?:\\.|[^\\)])*)\) Tj/g)) {
+        const text = mm[3].replace(/\\(.)/g, '$1').replace(/[\x80-\x9f]/g, c => W1252[c.charCodeAt(0)] || c);
+        if (/Vorstandsarbeit-Simulator \(Fantasiedaten\)$/.test(text)) continue;
+        lines.push({ text, bold: mm[1] === 'F2', size: Number(mm[2]) });
+      }
+    }
+    return { kind: 'pdf', name: f.name, lines };
+  }
+  return { kind: 'text', name: f.name, text: buf.toString('utf8').slice(0, 200_000) };
+}
+
+export function createWeltServer(opts) {
+  // opts.base wird bei jedem Aufruf gelesen (in Tests ist der Port erst nach dem Start bekannt)
+  const { appUrl } = opts;
   return http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://welt');
     const json = (o, s = 200) => { res.writeHead(s, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(o)); };
@@ -71,7 +94,7 @@ export function createWeltServer({ appUrl, base }) {
 
       // Schnittstellen der Vereinswelt
       if (p === '/api/status') return json(status());
-      if (p === '/api/welt') return json(info(appUrl, base));
+      if (p === '/api/welt') return json(info(appUrl, opts.base));
       if (p === '/api/postfach') {
         const mb = url.searchParams.get('mailbox'), folder = url.searchParams.get('folder') || 'inbox';
         return json(W().mails.filter(x => x.mailbox === mb && x.folder === folder && visible(x)).sort((a, b) => b.received.localeCompare(a.received))
@@ -94,10 +117,10 @@ export function createWeltServer({ appUrl, base }) {
       if (p === '/api/chats') return json(Object.entries(W().chats).map(([key, c]) => ({ key, name: c.name, messages: c.messages.map(x => ({ ...x, files: x.files.map(fid => fileMeta(fid)) })) })));
       if ((m = p.match(/^\/api\/chats\/(\w+)\/gelesen$/)) && req.method === 'POST') { W().chats[m[1]]?.messages.forEach(x => { x.read = true; }); save(); return json({ ok: true }); }
       if (p === '/api/ordner') return json(W().docs.map(d => ({ ...d, file: fileMeta(d.file) })));
-      if (p === '/api/clicktt') return json({ teams: info(appUrl, base).teams, games: W().games.filter(g => g.date >= clockNow().toISOString().slice(0, 10)).slice(0, 30) });
+      if (p === '/api/clicktt') return json({ teams: info(appUrl, opts.base).teams, games: W().games.filter(g => g.date >= clockNow().toISOString().slice(0, 10)).slice(0, 30) });
       if (p === '/api/jugendplaner') {
         const jp = W().jp, d0 = clockNow().toISOString().slice(0, 10);
-        return json({ teams: jp.youthTeams, parents: jpParents(), url: `${base}/jugendplaner`, games: jp.games.filter(g => g.date >= d0).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).slice(0, 24) });
+        return json({ teams: jp.youthTeams, parents: jpParents(), url: `${opts.base}/jugendplaner`, games: jp.games.filter(g => g.date >= d0).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).slice(0, 24) });
       }
       if (p === '/api/jugendplaner/set' && req.method === 'POST') {
         const b = await body();
@@ -111,7 +134,7 @@ export function createWeltServer({ appUrl, base }) {
         log(`Jugendplaner: ${b.field === 'drivers' ? `Fahrer für ${g.team} am ${g.date}: ${g.drivers || '(leer)'}` : b.field === 'avail' ? `Rückmeldung für ${g.team} am ${g.date} geändert` : `${g.team} am ${g.date} ${g.cancelled ? 'abgesagt' : 'wieder angesetzt'}`}`);
         return json({ ok: true });
       }
-      if (p === '/api/m365') return json({ aussen: W().aussen.slice().reverse(), drafts: W().mails.filter(x => x.folder === 'drafts').length, info: info(appUrl, base).m365 });
+      if (p === '/api/m365') return json({ aussen: W().aussen.slice().reverse(), drafts: W().mails.filter(x => x.folder === 'drafts').length, info: info(appUrl, opts.base).m365 });
       if (p === '/api/zeit' && req.method === 'POST') { const b = await body(); await advance(b.days); return json(status()); }
       if (p === '/api/pruefen' && req.method === 'POST') { react(); evaluate(); return json(status()); }
       if (p === '/api/ereignis' && req.method === 'POST') {
@@ -126,10 +149,39 @@ export function createWeltServer({ appUrl, base }) {
         return json(status());
       }
       if (p === '/api/ereignis/abbrechen' && req.method === 'POST') { abortEreignis((await body()).key); return json(status()); }
+      if (p === '/api/kapitel/ausfuellen' && req.method === 'POST') {
+        const b = await body();
+        const offen = status().einrichtung.filter(c => !c.ok && !c.skipped).map(c => c.key);
+        const msgs = await ausfuellen(b.key, { appUrl, base: opts.base, offen });
+        evaluate();
+        return json({ messages: msgs, status: status() });
+      }
+      if (p === '/api/kapitel/ueberspringen' && req.method === 'POST') { const b = await body(); skip(b.key, b.on !== false); return json(status()); }
+      if ((m = p.match(/^\/api\/datei\/([\w-]+)\/mailen$/)) && req.method === 'POST') {
+        const f = fileMeta(m[1]);
+        if (!f) return json({ error: 'Nicht gefunden' }, 404);
+        const b = await body();
+        mail(MAILBOX.ttv, { from: 'mia.muster@mail.example', fromName: 'Mia Muster (weitergeleitet)', subject: b.betreff || f.name, body: b.text || `Weitergeleitet aus der Vereinswelt: ${f.name}`, attachments: [[f.name, readFile(f.id), f.mime]] });
+        log(`✉ ${f.name} ans Vorstandspostfach geschickt`);
+        return json({ ok: true });
+      }
+      if ((m = p.match(/^\/api\/chats\/(\w+)\/([\w-]+)\/weiterleiten$/)) && req.method === 'POST') {
+        const msg = W().chats[m[1]]?.messages.find(x => x.id === m[2]);
+        if (!msg) return json({ error: 'Nicht gefunden' }, 404);
+        mail(MAILBOX.ttv, { from: 'mia.muster@mail.example', fromName: `WhatsApp: ${msg.from} (weitergeleitet)`, subject: `WhatsApp ${W().chats[m[1]].name}: ${msg.text.slice(0, 50)}`, body: `${msg.from} schrieb in „${W().chats[m[1]].name}“:\n${msg.text}`, attachments: msg.files.map(fid => [fileMeta(fid).name, readFile(fid), fileMeta(fid).mime]) });
+        log(`✉ WhatsApp-Nachricht von ${msg.from} ans Vorstandspostfach weitergeleitet`);
+        return json({ ok: true });
+      }
+      if ((m = p.match(/^\/vorschau\/([\w-]+)$/))) {
+        const f = fileMeta(m[1]);
+        if (!f) return json({ error: 'Nicht gefunden' }, 404);
+        return json(vorschau(f, readFile(f.id)));
+      }
       if (p === '/api/einstellung' && req.method === 'POST') {
         const b = await body();
         if ('saison' in b) W().saison = !!b.saison;
         if ('rauschen' in b) W().rauschen = !!b.rauschen;
+        if ('zweiterVerein' in b) W().zweiterVerein = !!b.zweiterVerein;
         save();
         log(`Einstellung: Saisonverlauf ${W().saison ? 'an' : 'aus'}, Alltagsrauschen ${W().rauschen ? 'an' : 'aus'}`);
         return json(status());

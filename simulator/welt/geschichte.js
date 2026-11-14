@@ -45,8 +45,8 @@ function homeGame(team, min, max) {
 export const EINRICHTUNG = [
   { key: 'konto', label: 'Erstes Admin-Konto angelegt (du bist Mia Muster, 1. Vorsitzende)', ok: () => !!player(),
     tip: 'Die App öffnen und das erste Konto anlegen. Danach startet der Einrichtungsassistent.' },
-  { key: 'bereiche', label: 'Bereiche heißen wie im Verein: TTV Musterhausen, SV Beispieldorf, Bezirk Musterkreis', ok: () => !!(areaLike('Musterhausen') && areaLike('Beispieldorf') && one(`SELECT 1 FROM areas WHERE active = 1 AND type = 'bezirk' AND name LIKE '%Musterkreis%'`)),
-    tip: 'Assistent Schritt 1: „Mein Verein“ umbenennen, zwei Bereiche hinzufügen (der Bezirk als Typ „Bezirk“).' },
+  { key: 'bereiche', label: 'Bereiche heißen wie im Verein: TTV Musterhausen und Bezirk Musterkreis (SV Beispieldorf nur, wenn oben gewählt)', ok: () => !!(areaLike('Musterhausen') && (!W().zweiterVerein || areaLike('Beispieldorf')) && one(`SELECT 1 FROM areas WHERE active = 1 AND type = 'bezirk' AND name LIKE '%Musterkreis%'`)),
+    tip: 'Assistent Schritt 1: „Mein Verein“ umbenennen und den Bezirk als Typ „Bezirk“ hinzufügen (SV Beispieldorf nur mit zweitem Verein).' },
   { key: 'konten', label: 'Vorstandskollegen haben Konten (mindestens 4, davon 2 Admins)', ok: () => one(`SELECT COUNT(*) AS n FROM users WHERE active = 1`).n >= 4 && one(`SELECT COUNT(*) AS n FROM users WHERE active = 1 AND role = 'admin'`).n >= 2,
     tip: 'Vereinsordner → Ämterliste. Admin: Vorsitz, Stellvertretung, Kasse, Bezirk. Zuarbeit: z. B. Jugend, Presse.' },
   { key: 'aemter', label: 'Ämter im TTV laut Ämterliste besetzt (mindestens 6)', ok: () => { const a = areaLike('Musterhausen'); return !!a && one('SELECT COUNT(*) AS n FROM offices WHERE area_id = ? AND holder_id IS NOT NULL', a.id).n >= 6; },

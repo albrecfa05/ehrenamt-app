@@ -186,19 +186,21 @@ function membersForm() {
   const stichtag = input({ type: 'date', value: `${Number(today().slice(0, 4)) + 1}-01-01` });
   const area = select(areaOptions(null), state.me.areas.find(a => a.type === 'verein')?.id);
   const out = h('div');
+  const pasted = textarea({ rows: 3, placeholder: 'Oder den Inhalt der CSV-Datei hier einfügen' });
   const run = async () => {
     const f = fi.files[0];
-    if (!f) return errorToast(new Error('Bitte die Exportdatei wählen.'));
+    const csv = f ? await f.text() : pasted.value;
+    if (!csv.trim()) return errorToast(new Error('Bitte die Exportdatei wählen oder den Inhalt einfügen.'));
     try {
-      const r = await api.post('/api/members/check', { csv: await f.text(), stichtag: stichtag.value });
-      fi.value = '';
+      const r = await api.post('/api/members/check', { csv, stichtag: stichtag.value });
+      fi.value = ''; pasted.value = '';
       clear(out, h('p', {}, `${r.checked} Personen geprüft (Spalten: ${r.columns.name}, ${r.columns.geburt}${r.columns.stufe ? ', ' + r.columns.stufe : ''}). ${r.changes.length} Stufenwechsel:`),
         r.changes.length ? [h('table', { class: 'table small' }, h('thead', {}, h('tr', {}, h('th', {}, 'Name'), h('th', {}, 'Alter'), h('th', {}, 'bisher'), h('th', {}, 'neu'))),
           h('tbody', {}, r.changes.map(c => h('tr', {}, h('td', {}, c.name), h('td', { class: 'num' }, c.alter), h('td', {}, c.ist), h('td', {}, c.soll))))),
         button('Aufgabe mit diesen Wechseln anlegen', async () => { const t = await api.post('/api/members/task', { area_id: Number(area.value), stichtag: r.stichtag, changes: r.changes }); location.hash = `#/aufgabe/${t.taskId}`; }, { kind: 'primary', iconName: 'plus' })] : null);
     } catch (e) { errorToast(e); }
   };
-  return h('div', {}, h('div', { class: 'form-grid' }, field('Export (CSV)', fi), field('Stichtag', stichtag), field('Bereich', area)), button('Prüfen', run, { kind: 'primary' }), out);
+  return h('div', {}, h('div', { class: 'form-grid' }, field('Export (CSV)', fi), field('Stichtag', stichtag), field('Bereich', area), h('div', { class: 'span-2' }, field('… oder Inhalt einfügen', pasted, 'Wird nur geprüft, nicht gespeichert.'))), button('Prüfen', run, { kind: 'primary' }), out);
 }
 
 // ---------- Datenschutz-Auskunft ----------

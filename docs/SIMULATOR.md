@@ -38,6 +38,15 @@ Beitragsordnung (48 €/96 € – die Voreinstellung der App passt bewusst nich
 Wissensbasis, Datenschutz-Schalter entschieden, Postfach verbunden, Spielplan abonniert, Asana
 übernommen, Jahreskalender abgeglichen, Sponsoren erfasst, Automatik-Voreinstellung, Abschluss.
 
+**Abkürzen:** Jeder Prüfpunkt hat „Ausfüllen lassen“ und „Überspringen“, oben gibt es „Alles Offene ausfüllen
+lassen“. Der Assistent arbeitet über die normalen Schnittstellen der App als Mia – mit allen Prüfungen, alles steht
+danach im Protokoll. Selbst machen muss man nur das erste Konto. Der zweite Verein (SV Beispieldorf) ist optional
+(Schalter über der Liste).
+
+**Dateien ohne Download:** „ansehen“ zeigt PDFs, CSV und Fotos direkt auf der Seite; „ans Postfach“ schickt jede
+Datei (und jede WhatsApp-Nachricht samt Fotos) als Mail ans Vorstandspostfach, von wo die App sie abholt. CSV-Inhalte
+lassen sich kopieren und in der App beim Asana-Import bzw. bei der meinVerein-Prüfung einfügen.
+
 ## Kapitel 2: Vereinsalltag
 
 Mit **Saisonverlauf** treten die Ereignisse an ihrem Tag von selbst ein; jedes lässt sich auch sofort auslösen.

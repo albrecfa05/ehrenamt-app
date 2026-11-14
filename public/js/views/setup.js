@@ -37,7 +37,8 @@ export default async function setup(el, { query = {} }) {
     const head = h('header', { class: 'setup-head' }, h('h2', {}, s.title), h('p', { class: 'muted' }, s.hint), h('div', { class: `conn-status ${s.ok ? 'ok' : 'off'}` }, icon(s.ok ? 'check' : 'clock', 16), h('div', {}, s.text)));
     const body = h('div', { class: 'setup-body' }, h('div', { class: 'loading' }, h('span', { class: 'spin' }), 'Lädt …'));
     clear(panel, h('section', { class: 'card pad' }, head, body, footer()));
-    try { await STEP_VIEWS[s.key](body, { refresh: async () => { await refresh(); await draw(); } }); }
+    // refresh: Schritt neu zeichnen; refreshNav: nur den Stand links aktualisieren (offene Felder bleiben offen)
+    try { await STEP_VIEWS[s.key](body, { refresh: async () => { await refresh(); await draw(); }, refreshNav: refresh }); }
     catch (e) { clear(body, h('p', { class: 'warn-text' }, e.message)); }
   }
 
@@ -72,7 +73,7 @@ const STEP_VIEWS = {
       }, { kind: 'ghost', iconName: 'plus' })));
   },
 
-  async personen(el, { refresh }) {
+  async personen(el, { refresh, refreshNav }) {
     const [users, offices] = await Promise.all([api.get('/api/users'), api.get('/api/offices')]);
     const name = input({ placeholder: 'Vor- und Nachname' });
     const login = input({ placeholder: 'anmeldename' });
@@ -92,11 +93,19 @@ const STEP_VIEWS = {
       }, { kind: 'ghost', iconName: 'plus' })),
       h('p', { class: 'hint' }, 'Empfehlung: mindestens zwei Admins, damit Freigaben und Vertretung funktionieren.'),
       h('h4', { class: 'mt' }, 'Ämter: Inhaber und Vertretung'),
-      [...byArea].map(([area, list]) => h('details', { class: 'card pad-sm', open: byArea.size === 1 }, h('summary', {}, h('strong', {}, area), h('span', { class: 'muted small' }, ` · ${list.filter(o => o.holder_id).length}/${list.length} besetzt`)),
+      [...byArea].map(([area, list]) => h('details', { class: 'card pad-sm', open: byArea.size === 1 }, h('summary', {}, h('strong', {}, area), h('span', { class: 'muted small office-count' }, ` · ${list.filter(o => o.holder_id).length}/${list.length} besetzt`)),
         h('table', { class: 'table small' }, h('tbody', {}, list.map(o => {
           const hs = select(userOptions('— unbesetzt —'), o.holder_id);
           const ds = select(userOptions('— keine —'), o.deputy_id);
-          const save = async () => { try { await api.put(`/api/offices/${o.id}`, { holder_id: hs.value ? Number(hs.value) : null, deputy_id: ds.value ? Number(ds.value) : null }); await refreshLookups(); refresh(); } catch (e) { errorToast(e); } };
+          const save = async () => {
+            try {
+              await api.put(`/api/offices/${o.id}`, { holder_id: hs.value ? Number(hs.value) : null, deputy_id: ds.value ? Number(ds.value) : null });
+              await refreshLookups();
+              const box = hs.closest('details');
+              box.querySelector('.office-count').textContent = ` · ${[...box.querySelectorAll('tr')].filter(tr => tr.querySelector('select').value).length}/${box.querySelectorAll('tr').length} besetzt`;
+              await refreshNav();
+            } catch (e) { errorToast(e); }
+          };
           hs.addEventListener('change', save); ds.addEventListener('change', save);
           return h('tr', {}, h('td', {}, o.name), h('td', {}, hs), h('td', {}, ds));
         }))))));
