@@ -40,19 +40,32 @@ export async function syncFeed(feed, user = null) {
       } else if (ex.title !== title || ex.date !== e.date || ex.time !== e.time || ex.location !== e.location) {
         q.run('UPDATE events SET title = ?, date = ?, time = ?, end_time = ?, location = ? WHERE id = ?', title, e.date, e.time, e.end_time, e.location, ex.id);
         changed++;
-        // Verlegtes Heimspiel: Frist der Aufgabe mitziehen
-        const t = q.get(`SELECT * FROM tasks WHERE parent_source = ? AND status IN ('offen','in_arbeit','wartet')`, `spielplan:${feed.id}:${e.uid}`);
-        if (t && t.due_date !== e.date) {
+        // Verlegtes Heimspiel: Aufgabe über die Zuordnung des Spiels finden (ältere Aufgaben ohne Zuordnung über die Quelle)
+        const open = `status IN ('offen','in_arbeit','wartet')`;
+        const t = ex.task_id ? q.get(`SELECT * FROM tasks WHERE id = ? AND ${open}`, ex.task_id)
+          : q.get(`SELECT * FROM tasks WHERE parent_source = ? AND ${open}`, `spielplan:${feed.id}:${e.uid}`);
+        const others = t ? q.get('SELECT COUNT(*) AS n FROM events WHERE task_id = ? AND id != ?', t.id, ex.id).n : 0;
+        if (t && ex.date !== e.date && others) {
+          // Heimspieltag mit weiteren Spielen: das verlegte Spiel herausnehmen, die übrigen bleiben an ihrem Tag.
+          // Unten wird es dem neuen Tag zugeordnet (oder bekommt eine eigene Aufgabe).
+          spieltag.linkEvent(ex.id, null);
+          spieltag.refreshTask(t.id);
+          audit(user, { entity: 'task', entityId: t.id, areaId: t.area_id, action: 'geändert', summary: `Spiel verlegt laut Spielplan: „${e.summary}“ vom ${formatDateDe(ex.date)} auf den ${formatDateDe(e.date)}, nicht mehr Teil dieses Heimspieltags` });
+          notify([t.owner_id, t.deputy_id], t.id, 'verlegung', `Spiel verlegt: „${e.summary}“ jetzt am ${formatDateDe(e.date)} – nicht mehr an diesem Heimspieltag.`);
+        } else if (t && t.due_date !== e.date) {
           q.run('UPDATE tasks SET due_date = ?, last_activity_at = ? WHERE id = ?', e.date, nowIso(), t.id);
           audit(user, { entity: 'task', entityId: t.id, areaId: t.area_id, action: 'geändert', summary: `Spiel verlegt laut Spielplan: Fälligkeit ${formatDateDe(t.due_date)} → ${formatDateDe(e.date)}` });
           notify([t.owner_id, t.deputy_id], t.id, 'verlegung', `Spiel verlegt: „${e.summary}“ jetzt am ${formatDateDe(e.date)}.`);
+          if (ex.task_id) spieltag.refreshTask(t.id); // Titel und Beschreibung mit dem neuen Datum
         }
       }
       if (home && feed.create_tasks && isOn('heimspiel_aufgaben') && e.date >= d && addDays(e.date, -feed.lead_days) <= d) {
         const key = `spielplan:${feed.id}:${e.uid}`;
         const ev = q.get('SELECT * FROM events WHERE feed_id = ? AND external_uid = ?', feed.id, e.uid);
-        const existing = q.get('SELECT id FROM tasks WHERE parent_source = ?', key);
-        if (existing) {
+        // Eigene Aufgabe des Spiels – aber nicht mehr, wenn sie inzwischen andere Spiele an einem anderen Tag bündelt (Spiel verlegt)
+        const existing = q.get(`SELECT t.id, t.due_date, (SELECT COUNT(*) FROM events WHERE task_id = t.id) AS games
+                                FROM tasks t WHERE t.parent_source = ? ORDER BY t.id DESC LIMIT 1`, key);
+        if (existing && (!existing.games || existing.due_date === e.date)) {
           if (ev && !ev.task_id) { spieltag.linkEvent(ev.id, existing.id); spieltag.refreshTask(existing.id); }
         } else if (ev && !ev.task_id) {
           // Mehrere Heimspiele an einem Tag: eine gemeinsame Heimspieltag-Aufgabe statt mehrerer
