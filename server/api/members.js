@@ -97,6 +97,7 @@ put('/api/members/:id', ({ user, params, body }) => {
   if (!ex || !canSeeArea(user, ex.area_id)) throw notFound();
   const m = cleanMember({ ...ex, ...body });
   q.run('UPDATE members SET first_name = ?, last_name = ?, birth_year = ?, gender = ?, team = ?, ttr = ?, updated_at = ? WHERE id = ?', m.first_name, m.last_name, m.birth_year, m.gender, m.team, m.ttr, nowIso(), ex.id);
+  audit(user, { entity: 'members', action: 'geändert', areaId: ex.area_id, summary: 'Mitglied in der Liste geändert' });
   return { ok: true };
 });
 
@@ -129,10 +130,11 @@ post('/api/draws', ({ user, body }) => {
   let id = null;
   if (body.save) {
     needGelb();
-    const areaId = int(body.area_id);
-    if (areaId) assertArea(user, areaId);
+    // Gespeicherte Auslosungen enthalten Namen (gelbe Daten): nur mit Bereich, sonst sähen sie alle Bereiche
+    const areaId = int(body.area_id, { nullable: false, name: 'Bereich (zum Speichern einen Bereich wählen)' });
+    assertArea(user, areaId);
     id = Number(q.run('INSERT INTO draws (area_id, title, mode, seed, input, result, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      areaId || null, title, d.mode, d.seed, JSON.stringify(participants.map(p => ({ name: p.name, ttr: p.ttr || null }))), JSON.stringify(d.result), user.id, nowIso()).lastInsertRowid);
+      areaId, title, d.mode, d.seed, JSON.stringify(participants.map(p => ({ name: p.name, ttr: p.ttr || null }))), JSON.stringify(d.result), user.id, nowIso()).lastInsertRowid);
   }
   audit(user, { entity: 'draw', entityId: id, action: 'auslosung', summary: `Auslosung „${title}“: ${MODES[d.mode].label}, ${d.count} Teilnehmende, Zufallswert ${d.seed}${id ? ', gespeichert' : ''}` });
   return { ...d, id, title, text: asText(d) };

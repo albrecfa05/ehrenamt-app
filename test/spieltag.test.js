@@ -72,6 +72,7 @@ test('Heimspieltag: zwei Spiele an einem Tag → eine Aufgabe; Jugend braucht ke
   icsText = ics([['g1', d1, '10:00', 'TTV Musterhausen U15 – TTG Seeblick U15'], ['g2', d1, '19:30', 'TTV Musterhausen II – SV Nachbarort'], ['g3', d2, '10:00', 'TTV Musterhausen U13 – DJK Talstadt U13'], ['g4', day(4), '18:00', 'SV Gast – TTV Musterhausen II']]);
   const vor16 = (await admin.get('/api/process-templates')).data.find(t => t.key === 'VOR-16');
   const f = await admin.post('/api/feeds', { area_id: ctx.area, name: 'Herren II (Kreisliga)', url: `${base}/team.ics`, home_pattern: 'TTV Musterhausen', create_tasks: true, template_id: vor16.id, lead_days: 10 });
+  ctx.feed = f.data.id;
   const s = await admin.post(`/api/feeds/${f.data.id}/sync`);
   assert.equal(s.data.tasks, 2, 'zwei Spieltage, nicht drei Aufgaben');
   const tasks = (await admin.get('/api/tasks?q=Heimspiel')).data;
@@ -101,6 +102,26 @@ test('Heimspieltag: zwei Spiele an einem Tag → eine Aufgabe; Jugend braucht ke
   assert.match(yv.schiedsrichter, /kein Schiedsrichter nötig/);
 });
 
+test('Heimspieltag: verlegtes Spiel verlässt die Aufgabe, das andere bleibt an seinem Tag', async () => {
+  const d1 = day(3), neu = day(6);
+  // g1 (U15) hat die gemeinsame Aufgabe angelegt und wird jetzt verlegt
+  icsText = ics([['g1', neu, '10:00', 'TTV Musterhausen U15 – TTG Seeblick U15'], ['g2', d1, '19:30', 'TTV Musterhausen II – SV Nachbarort'], ['g3', day(5), '10:00', 'TTV Musterhausen U13 – DJK Talstadt U13'], ['g4', day(4), '18:00', 'SV Gast – TTV Musterhausen II']]);
+  const s = await admin.post(`/api/feeds/${ctx.feed}/sync`);
+  assert.equal(s.data.tasks, 1, 'das verlegte Spiel bekommt am neuen Tag eine eigene Aufgabe');
+  const all = (await admin.get('/api/tasks?q=Heimspiel')).data;
+  const list = Array.isArray(all) ? all : all.tasks || all.items;
+  const alt = list.find(t => t.title.includes('SV Nachbarort'));
+  const ad = (await admin.get(`/api/tasks/${alt.id}`)).data;
+  assert.equal(ad.events.length, 1, 'nur noch das Herren-Spiel');
+  assert.equal(ad.task.due_date, d1, 'Frist bleibt am alten Tag');
+  assert.ok(!ad.task.title.includes('Seeblick'), ad.task.title);
+  const neuT = list.find(t => t.title.includes('TTG Seeblick'));
+  assert.equal(neuT.due_date, neu);
+  assert.notEqual(neuT.id, alt.id);
+  const again = await admin.post(`/api/feeds/${ctx.feed}/sync`);
+  assert.equal(again.data.tasks, 0, 'zweiter Abgleich legt nichts doppelt an');
+});
+
 test('Mitgliederliste nur mit „Gelb lokal“; Auslosung nachprüfbar', async () => {
   const csv = 'Vorname,Nachname,Geburtsdatum,Mannschaft,Q-TTR,IBAN\nAnna,Ahorn,01.02.2012,U15,1350,DE00\nBen,Birke,03.04.2011,U15,1420,DE00\nCem,Erle,2013,U13,1100,\nDora,Esche,2012,U15,1280,';
   let r = await admin.post('/api/members/import', { area_id: ctx.area, text: csv });
@@ -121,7 +142,9 @@ test('Mitgliederliste nur mit „Gelb lokal“; Auslosung nachprüfbar', async (
   assert.ok(!JSON.stringify(m).includes('DE00'), 'Bankdaten aus dem Export werden ignoriert');
   assert.deepEqual(m.teams, ['U13', 'U15']);
   const people = m.members.map(x => ({ name: `${x.first_name} ${x.last_name}`, ttr: x.ttr }));
-  const a = await admin.post('/api/draws', { mode: 'gruppen', participants: people, groups: 2, seeded: true, seed: 'abc', title: 'Vereinsmeisterschaft', save: true });
+  const ohne = await admin.post('/api/draws', { mode: 'gruppen', participants: people, groups: 2, seed: 'abc', save: true });
+  assert.equal(ohne.status, 400, 'gespeicherte Auslosung mit Namen braucht einen Bereich');
+  const a = await admin.post('/api/draws', { mode: 'gruppen', participants: people, groups: 2, seeded: true, seed: 'abc', title: 'Vereinsmeisterschaft', save: true, area_id: ctx.area });
   const b = await admin.post('/api/draws', { mode: 'gruppen', participants: people, groups: 2, seeded: true, seed: 'abc' });
   assert.deepEqual(a.data.result, b.data.result, 'gleicher Zufallswert → gleiches Ergebnis');
   const tops = a.data.result.groups.map(g => Math.max(...g.members.map(x => x.ttr)));
@@ -129,6 +152,8 @@ test('Mitgliederliste nur mit „Gelb lokal“; Auslosung nachprüfbar', async (
   assert.ok(a.data.id);
   const ko = await admin.post('/api/draws', { mode: 'ko', participants: people.slice(0, 3), seeded: true });
   assert.equal(ko.data.result.byes, 1);
+  await admin.put(`/api/members/${m.members[0].id}`, { ttr: 1500 });
   const audit = JSON.stringify((await admin.get('/api/audit?limit=50')).data);
+  assert.ok(audit.includes('Mitglied in der Liste geändert'), 'Änderung steht im Protokoll');
   assert.ok(!audit.includes('Ahorn'), 'keine Namen im Protokoll');
 });
